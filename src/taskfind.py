@@ -1,6 +1,8 @@
 from openai import AzureOpenAI
 from Model_client import AzureClient
 from NmapHandler import scanner
+from ExploitHandler import runExploits
+
 functions = [
     {
         "name": "scan",
@@ -47,9 +49,14 @@ functions = [
         "description": "Analyzes chat logs, emails, or messages for signs of social engineering attacks.",
         "parameters": {"type": "object", "properties": {}}
     },
+    {
+        "name": "exploitation",
+        "description": "Executes exploits against a target using tools like Metasploit or manual scripts.,if user asked to run tools like :- metasploit,searchsploit",
+        "parameters": {"type": "object", "properties": {}}
+    }
 ]
 
-# these are here for testing Only
+
 def scan(user_query):
     print("🔍 Running network scan...")
 
@@ -77,7 +84,8 @@ def port_knocking_detector(user_query):
 def social_engineering_analysis(user_query):
     print("🗣️ Analyzing social engineering attacks...")
 
-# Mapping functions
+
+
 task_map = {
     "scan": scanner,
     "crackers": crackers,
@@ -87,7 +95,8 @@ task_map = {
     "forensic_analysis": forensic_analysis,
     "steganography_detector": steganography_detector,
     "port_knocking_detector": port_knocking_detector,
-    "social_engineering_analysis": social_engineering_analysis
+    "social_engineering_analysis": social_engineering_analysis,
+    "exploitation": runExploits
 }
 
 def tasksfinder(user_query):
