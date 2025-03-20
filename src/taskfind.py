@@ -1,6 +1,7 @@
 from openai import AzureOpenAI
 from Model_client import AzureClient
 from NmapHandler import scanner
+from CrackerHandler import cracker
 from ExploitHandler import runExploits
 
 functions = [
@@ -10,8 +11,8 @@ functions = [
         "parameters": {"type": "object", "properties": {}}
     },
     {
-        "name": "crackers",
-        "description": "Handles any task related to breaking or cracking passwords.",
+        "name": "cracker",
+    "   description": "Handles any task related to breaking or cracking passwords.",
         "parameters": {"type": "object", "properties": {}}
     },
     {
@@ -60,9 +61,6 @@ functions = [
 def scan(user_query):
     print("🔍 Running network scan...")
 
-def crackers(user_query):
-    print("🔓 Running password cracking task...")
-
 def phishing_detector(user_query):
     print("⚠️ Analyzing for phishing threats...")
 
@@ -88,7 +86,7 @@ def social_engineering_analysis(user_query):
 
 task_map = {
     "scan": scanner,
-    "crackers": crackers,
+    "cracker": cracker,
     "phishing_detector": phishing_detector,
     "malware_analysis": malware_analysis,
     "web_vulnerability_scan": web_vulnerability_scan,
@@ -115,9 +113,9 @@ def tasksfinder(user_query):
 
     out = response.choices[0].message.function_call
 
-    if out is not None:
+    if out and hasattr(out, "name"):
         func_name = out.name
         task_func = task_map.get(func_name, lambda user_query: print("❌ Unknown function"))
-        return task_func(user_query)  
+        return task_func(user_query)
 
     return response.choices[0].message.content
