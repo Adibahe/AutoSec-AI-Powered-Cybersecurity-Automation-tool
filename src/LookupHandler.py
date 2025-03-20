@@ -1,11 +1,40 @@
 import requests
 import json
+import os
+from Model_client import AzureClient
 
-def pretty_print(data):
-    """Formats and prints JSON output in a readable way."""
-    print(json.dumps(data, indent=4, sort_keys=True))
+functions = []  # Ensure functions is defined before extending it
+api_key = os.getenv("WHOISXML_API_KEY")
 
-def whois_lookup(query, api_key):
+def pretty_print(data, task_name="Generic Task"):
+    """Formats and prints JSON output in a readable way and sends it to the AI model."""
+    formatted_data = json.dumps(data, indent=4, sort_keys=True)
+    print(formatted_data)
+    process_and_send_output(task_name, formatted_data)
+
+def process_and_send_output(task_name, processed_output):
+    """Sends processed function output to the AI model."""
+    print("inside process_and_send_output")
+    client = AzureClient.get_client()
+    deployment = AzureClient.deployment
+    truncated_output = processed_output[:4000]  # Prevent sending too much data
+
+    response = client.chat.completions.create(
+        model=deployment,
+        messages=[
+            {"role": "system", "content": "You are a cyber bot that executes functions to process user queries."},
+            {"role": "system", "content": f"The {task_name} task was executed.\nOutput:\n{truncated_output}"}
+        ],
+        stream=False
+    )
+
+    print("🔹 Response sent to AI Model:")
+    print(response.choices[0].message.content)  # Print for debugging
+    return response.choices[0].message.content  # Fixed typo here
+
+
+
+def whois_lookup(query):
     """Queries the WhoisXML API for domain names, IP addresses, or ASNs."""
     base_url = "https://www.whoisxmlapi.com/whoisserver/WhoisService"
     url = f"{base_url}?apiKey={api_key}&domainName={query}&outputFormat=json&type=_all"
@@ -15,9 +44,11 @@ def whois_lookup(query, api_key):
         pretty_print(response.json())
     except requests.exceptions.RequestException as e:
         print(f"Error in Whois Lookup: {e}")
+    return None
 
-def dns_lookup(domain, api_key):
-    """Queries the WhoisXML API for DNS records."""
+def dns_lookup(domain):
+    """Queries the WhoisXML API for DNS records securely."""
+    
     base_url = "https://www.whoisxmlapi.com/whoisserver/DNSService"
     url = f"{base_url}?apiKey={api_key}&domainName={domain}&outputFormat=json&type=_all"
     try:
@@ -25,9 +56,10 @@ def dns_lookup(domain, api_key):
         response.raise_for_status()
         pretty_print(response.json())
     except requests.exceptions.RequestException as e:
-        print(f"Error in DNS Lookup: {e}")
+        print(f"Error in Whois Lookup: {e}")
+    return None
 
-def ip_geolocation(ip, api_key):
+def ip_geolocation(ip):
     """Queries the WhoisXML API for IP geolocation."""
     base_url = "https://ip-geolocation.whoisxmlapi.com/api/v1"
     url = f"{base_url}?apiKey={api_key}&ipAddress={ip}&outputFormat=json&type=_all"
@@ -38,7 +70,7 @@ def ip_geolocation(ip, api_key):
     except requests.exceptions.RequestException as e:
         print(f"Error in IP Geolocation: {e}")
     
-def email_verification(email, api_key):
+def email_verification(email):
     """
     Verifies an email address using the WhoisXML API v3.
     """
@@ -54,7 +86,7 @@ def email_verification(email, api_key):
         print(f"Error: {e}")
         return None
 
-def threat_intelligence_lookup(ioc, api_key):
+def threat_intelligence_lookup(ioc):
     """
     Queries the WhoisXML Threat Intelligence API for a given IOC (Indicator of Compromise).
     """
@@ -69,7 +101,7 @@ def threat_intelligence_lookup(ioc, api_key):
         print(f"Error: {e}")
         return None
     
-def ssl_certificate_lookup(domain, api_key):
+def ssl_certificate_lookup(domain):
     """
     Queries the WhoisXML API for SSL certificate details.
     """
@@ -81,7 +113,7 @@ def ssl_certificate_lookup(domain, api_key):
     except requests.exceptions.RequestException as e:
         print(f"Error in SSL Certificate Lookup: {e}")
 
-def mac_address_lookup(mac, api_key):
+def mac_address_lookup(mac):
     """
     Queries the WhoisXML API for MAC address details.
     """
@@ -93,7 +125,7 @@ def mac_address_lookup(mac, api_key):
     except requests.exceptions.RequestException as e:
         print(f"Error in MAC Address Lookup: {e}")
 
-def domain_availability(domain, api_key):
+def domain_availability(domain):
     """
     Checks if a domain is available for registration using WhoisXML API.
     """
@@ -108,54 +140,60 @@ def domain_availability(domain, api_key):
         print(f"Error: {e}")
         return None
 
-def main():
-    api_key = ""
+
+
+def lookup_handler(user_query):
+    print("Performing lookup task...")
+    client = AzureClient.get_client()
+    deployment = AzureClient.deployment
     
-    while True:
-        print("\nMenu:")
-        print("1. Whois Lookup")
-        print("2. DNS Lookup")
-        print("3. IP Geolocation")
-        print("4.email verification")
-        print("5. Exit")
+    response = client.chat.completions.create(
+        model=deployment,
+        messages=[
+            {"role": "system", "content": "You are a cyber bot specializing in various lookup services."},
+            {"role": "user", "content": user_query},
+        ],
+        functions=functions,
+        stream=False
+    )
+    
+    out = response.choices[0].message.function_call
+    
+    if out is not None:
+        print("Executing lookup function...")
+        params = json.loads(out.arguments)
+        lookup_type = out.name  # Extract function name
+
+        lookup_functions = {
+            "whois_lookup": whois_lookup,
+            "dns_lookup": dns_lookup,
+            "ip_geolocation": ip_geolocation,
+            "email_verification": email_verification,
+            "threat_intelligence_lookup": threat_intelligence_lookup,
+            "ssl_certificate_lookup": ssl_certificate_lookup,
+            "mac_address_lookup": mac_address_lookup,
+            "domain_availability": domain_availability
+        }
         
-        choice = input("Enter your choice: ")
-        match choice:
-            case "1":
-                query = input("Enter domain name: ")
-                whois_lookup(query, api_key)
-            case "2":
-                query = input("Enter domain name: ")
-                dns_lookup(query, api_key)
-            case "3":
-                ip = input("Enter IP address: ")
-                ip_geolocation(ip, api_key)
-
-            case "4":
-                email = input("Enter email address: ")
-                email_verification(email, api_key)
-
-            case "5":
-                domain = input("Enter domain name: ")
-                ssl_certificate_lookup(domain, api_key)
-
-            case "6":
-                mac_address = input("Enter mac address: ")
-                mac_address_lookup(mac_address, api_key)
+        if lookup_type in lookup_functions:
+            query_param = params.get("query", params.get("domain", params.get("ip", params.get("email", params.get("ioc", params.get("mac", ""))))))
+            if not query_param:
+                print("❌ Error: No valid input extracted from the query.")
+                return
             
-            case "7":
-                ioc = input("Enter IOC: ")
-                threat_intelligence_lookup(ioc, api_key)
+            lookup_functions[lookup_type](query_param)
+            
+functions.extend([
+    {"name": "whois_lookup", "description": "Performs a WHOIS lookup on a domain or IP address.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "The domain name or IP address to look up."}}, "required": ["query"]}},
+    {"name": "dns_lookup", "description": "Performs a DNS lookup for a given domain.", "parameters": {"type": "object", "properties": {"domain": {"type": "string", "description": "The domain name to look up."}}, "required": ["domain"]}},
+    {"name": "ip_geolocation", "description": "Performs IP geolocation lookup.", "parameters": {"type": "object", "properties": {"ip": {"type": "string", "description": "The IP address to look up."}}, "required": ["ip"]}},
+    {"name": "email_verification", "description": "Verifies an email address.", "parameters": {"type": "object", "properties": {"email": {"type": "string", "description": "The email address to verify."}}, "required": ["email"]}},
+    {"name": "threat_intelligence_lookup", "description": "Queries threat intelligence for a given IOC.", "parameters": {"type": "object", "properties": {"ioc": {"type": "string", "description": "Indicator of compromise to check."}}, "required": ["ioc"]}},
+    {"name": "ssl_certificate_lookup", "description": "Queries SSL certificate details.", "parameters": {"type": "object", "properties": {"domain": {"type": "string", "description": "The domain name to look up."}}, "required": ["domain"]}},
+    {"name": "mac_address_lookup", "description": "Queries MAC address details.", "parameters": {"type": "object", "properties": {"mac": {"type": "string", "description": "The MAC address to look up."}}, "required": ["mac"]}},
+    {"name": "domain_availability", "description": "Checks if a domain is available for registration.", "parameters": {"type": "object", "properties": {"domain": {"type": "string", "description": "The domain name to check."}}, "required": ["domain"]}}
+])
 
-            case "8":
-                domain = input("Enter domain: ")
-                domain_availability(domain, api_key)
 
-            case "0":
-                print("Exiting...")
-                break
-            case _:
-                print("Invalid choice. Please try again.")
 
-if __name__ == "__main__":
-    main()
+
