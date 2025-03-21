@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cybersecurity Tools</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
+    />
+    <style>
+      body {
+        background-color: #1a1a1a;
+        color: #f0f0f0;
+      }
+      .sidebar {
+        background-color: #2a2a2a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="flex">
+      <div class="sidebar w-1/4 h-screen p-4">
+        <h2 class="text-xl font-bold">Tools</h2>
+        <ul>
+          <li><button onclick="selectTool('nmap')">Nmap</button></li>
+          <!-- Add more tools here -->
+        </ul>
+      </div>
+      <div class="content w-3/4 p-4">
+        <h1 class="text-2xl font-bold">Cybersecurity Tool Automation</h1>
+        <form id="toolForm">
+          <input type="hidden" name="tool" id="toolInput" />
+          <textarea
+            name="user_query"
+            placeholder="Enter your command here..."
+            class="w-full p-2 mt-4 bg-gray-800 text-white"
+          ></textarea>
+          <button type="submit" class="mt-4 bg-blue-500 text-white p-2 rounded">
+            Run
+          </button>
+        </form>
+        <div id="result" class="mt-4"></div>
+      </div>
+    </div>
+    <script>
+      function selectTool(tool) {
+        document.getElementById("toolInput").value = tool;
+      }
+
+      document
+        .getElementById("toolForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          const formData = new FormData(this);
+          fetch("/run_tool", {
+            method: "POST",
+            body: formData,
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              document.getElementById("result").innerText = JSON.stringify(
+                data.result,
+                null,
+                2
+              );
+            });
+        });
+    </script>
+  </body>
+</html>
