@@ -2,3 +2,5 @@ python-nmap
 openai
 python-dotenv
 hashcat
+requests
+langchain

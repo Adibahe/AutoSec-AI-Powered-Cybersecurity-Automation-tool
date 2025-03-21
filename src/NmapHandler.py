@@ -1,6 +1,9 @@
 import nmap
 import json
 from Model_client import AzureClient
+from Memory import MemorySingleton
+
+memory = MemorySingleton()
 
 def scanner(user_query):
     print("scanning task ....")
@@ -19,33 +22,47 @@ def scanner(user_query):
     out = response.choices[0].message.function_call
     
     if out is not None:
-        print("running nmap scan...")
+        print("Running Nmap scan...")
         params = out.arguments
- 
+
         name = out.name
-       
-        
         params_dict = json.loads(params)
         ip = params_dict.get("ip", "")
         arguments = params_dict.get("arguments", [])
-        
+
         args_str = " ".join(arguments)
         command = f"{ip} {args_str}"
-        
-        func = eval(name)
-        out = func(ip, arguments)
-        
+
+        # Mapping function names to actual functions instead of eval
+        function_map = {
+            "scan": scan
+        }
+
+        if name in function_map:
+            out = function_map[name](ip, arguments)
+        else:
+            raise ValueError(f"Unknown function name: {name}")
+
         out_str = json.dumps(out, indent=2)
-        
+
+        # Retrieve history from memory
+        history = memory.get_history()
+
         response = client.chat.completions.create(
             model=deployment,
             messages=[
                 {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
+                {"role": "system", "content": f"User history -> {history}"},
                 {"role": "system", "content": f"An Nmap command was run -> {command}\nThe output of the user's query is:\n{out_str}"}
             ],
             stream=False
         )
-        print(response.choices[0].message.content)
+
+        output = response.choices[0].message.content
+        # Store user query and response in memory
+        memory.add_message(user_input=user_query, bot_response=output)
+
+        print(output)
 
 def scan(ip, arguments):
     nm = nmap.PortScanner()

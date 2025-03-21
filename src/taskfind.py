@@ -5,6 +5,11 @@ from CrackerHandler import cracker
 from ExploitHandler import runExploits
 from LookupHandler import lookup_handler
 
+from Memory import MemorySingleton
+
+memory = MemorySingleton()
+
+
 functions = [
     {
         "name": "scan",
@@ -155,10 +160,13 @@ def tasksfinder(user_query):
     client = AzureClient.get_client() 
     deployment = AzureClient.deployment
 
+    history = memory.get_history() 
+    #print(f"User history -> {history}")
     response = client.chat.completions.create(
         model=deployment,
         messages=[
             {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
+            {"role": "system", "content": f"User history -> {history}"},
             {"role": "user", "content": user_query},
         ],
         functions=functions,  
@@ -172,4 +180,6 @@ def tasksfinder(user_query):
         task_func = task_map.get(func_name, lambda user_query: print("❌ Unknown function"))
         return task_func(user_query)
 
-    return response.choices[0].message.content
+    output=response.choices[0].message.content
+    memory.add_message(user_input=user_query,bot_response=output)
+    return output
