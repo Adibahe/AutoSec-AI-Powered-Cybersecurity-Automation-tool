@@ -26,3 +26,5 @@ To learn more, take a look at the following resources:
 - [TailwindCSS Documentation](https://tailwindcss.com/) - learn about TailwindCSS
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+- ![image](https://github.com/user-attachments/assets/1a5387e9-1f26-413f-95aa-0b50ae2237c7)
