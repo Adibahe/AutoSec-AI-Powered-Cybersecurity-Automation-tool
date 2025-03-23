@@ -4,3 +4,4 @@ python-dotenv
 hashcat
 requests
 langchain
+flask

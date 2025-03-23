@@ -1,11 +1,11 @@
-from openai import AzureOpenAI
+
 from Model_client import AzureClient
 from NmapHandler import scanner
 from CrackerHandler import cracker
 from ExploitHandler import runExploits
 from LookupHandler import lookup_handler
 from SqlMapHandler import WebVulnHandler
-
+import json
 from Memory import MemorySingleton
 
 memory = MemorySingleton()
@@ -159,12 +159,41 @@ task_map = {
     "domain_availability": lookup_handler,
 }
 
+#old one 
+# def tasksfinder(user_query):
+#     client = AzureClient.get_client() 
+#     deployment = AzureClient.deployment
+
+#     history = memory.get_history() 
+#     #print(f"User history -> {history}")
+#     response = client.chat.completions.create(
+#         model=deployment,
+#         messages=[
+#             {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
+#             {"role": "system", "content": f"User history -> {history}"},
+#             {"role": "user", "content": user_query},
+#         ],
+#         functions=functions,  
+#         stream=False
+#     )
+
+#     out = response.choices[0].message.function_call
+
+#     if out and hasattr(out, "name"):
+#         func_name = out.name
+#         task_func = task_map.get(func_name, lambda user_query: print("❌ Unknown function"))
+#         return task_func(user_query)
+
+#     output=response.choices[0].message.content
+#     memory.add_message(user_input=user_query,bot_response=output)
+#     return output
+
+
 def tasksfinder(user_query):
     client = AzureClient.get_client() 
     deployment = AzureClient.deployment
 
-    history = memory.get_history() 
-    #print(f"User history -> {history}")
+    history = memory.get_history()  
     response = client.chat.completions.create(
         model=deployment,
         messages=[
@@ -173,16 +202,42 @@ def tasksfinder(user_query):
             {"role": "user", "content": user_query},
         ],
         functions=functions,  
-        stream=False
+        stream=True  
     )
 
-    out = response.choices[0].message.function_call
+    function_call_detected = False
+    func_name = None
+    func_args = ""
 
-    if out and hasattr(out, "name"):
-        func_name = out.name
-        task_func = task_map.get(func_name, lambda user_query: print("❌ Unknown function"))
-        return task_func(user_query)
+    for chunk in response:  
+        if not chunk.choices:
+            continue  
+        
+        delta = chunk.choices[0].delta 
+        # print("Chunk Data:", json.dumps(chunk.model_dump(), indent=2))  #enable this for debugging purpose
 
-    output=response.choices[0].message.content
-    memory.add_message(user_input=user_query,bot_response=output)
-    return output
+        
+        if hasattr(delta, "function_call") and delta.function_call:
+            function_call_detected = True
+            if delta.function_call.name:
+                func_name = delta.function_call.name  
+            if delta.function_call.arguments:
+                func_args += delta.function_call.arguments  
+
+      
+        if hasattr(delta, "content") and delta.content:
+            yield f"{delta.content}"
+
+    if function_call_detected and func_name:
+        print(f"\nFunction Call Detected: {func_name}")
+        print(f"Function Arguments: {func_args}")
+
+        try:
+            func_args = json.loads(func_args)
+        except json.JSONDecodeError:
+            print("⚠️ Warning: Function arguments are not valid JSON.")
+
+        task_func = task_map.get(func_name, lambda query: " Unknown function")
+        result = task_func(user_query)
+        yield f"\nFunction execution result:\n{result}\n"
+
