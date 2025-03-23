@@ -4,11 +4,12 @@ from NmapHandler import scanner
 from CrackerHandler import cracker
 from ExploitHandler import runExploits
 from LookupHandler import lookup_handler
+from SqlMapHandler import WebVulnHandler
+
 from Memory import MemorySingleton
-import subprocess
-import re
 
 memory = MemorySingleton()
+
 
 functions = [
     {
@@ -33,22 +34,8 @@ functions = [
     },
     {
         "name": "web_vulnerability_scan",
-        "description": "Scans a website for common vulnerabilities like XSS, SQL injection, etc.",
+        "description": "Scans a website for common vulnerabilities like XSS, SQL injection, etc.,tools like sqlmap ",
         "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "sqlmap_scan",
-        "description": "Performs an SQL Injection scan using SQLMap.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "target_url": {
-                    "type": "string",
-                    "description": "The target URL to test for SQL injection."
-                }
-            },
-            "required": ["target_url"]
-        }
     },
     {
         "name": "forensic_analysis",
@@ -122,36 +109,80 @@ functions = [
     }
 ]
 
-def sqlmap_scan(user_query):
-    target_url = extract_target_url(user_query)
-    if not target_url:
-        return "❌ Error: No valid URL found in query."
 
-    print(f"🚀 Running SQLMap on: {target_url}")
+def scan(user_query):
+    print("🔍 Running network scan...")
 
-    try:
-        command = [
-            "sqlmap",
-            "-u", target_url,
-            "--dbs",
-            "--batch"
-        ]
-        
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+def phishing_detector(user_query):
+    print("⚠️ Analyzing for phishing threats...")
 
-        if result.returncode == 0:
-            structured_output = parse_sqlmap_output(result.stdout)
-            return f"✅ SQLMap Scan Complete:\n{structured_output}"
-        else:
-            return f"⚠ SQLMap encountered an error:\n{result.stderr}"
-    except Exception as e:
-        return f"❌ Exception occurred: {str(e)}"
+def malware_analysis(user_query):
+    print("🦠 Performing malware analysis...")
 
-def parse_sqlmap_output(output):
-    dbms_match = re.search(r"back-end DBMS: (.+?)", output)
-    dbms = dbms_match.group(1) if dbms_match else "Unknown"
+# def web_vulnerability_scan(user_query):
+#     print("🌐 Scanning for web vulnerabilities...")
 
-    databases_match = re.findall(r"available databases \[\d+\]:\n- (.+)\n", output, re.MULTILINE)
-    databases = "\n".join(databases_match) if databases_match else "No databases found"
-    
-    return f"**Detected DBMS:** {dbms}\n**Databases:**\n{databases}"
+def forensic_analysis(user_query):
+    print("🕵️ Performing digital forensic analysis...")
+
+def steganography_detector(user_query):
+    print("📷 Detecting hidden messages using steganalysis...")
+
+def port_knocking_detector(user_query):
+    print("🚪 Analyzing network traffic for port knocking attempts...")
+
+def social_engineering_analysis(user_query):
+    print("🗣️ Analyzing social engineering attacks...")
+
+
+
+
+
+task_map = {
+    "scan": scanner,
+    "cracker": cracker,
+    "phishing_detector": phishing_detector,
+    "malware_analysis": malware_analysis,
+    "web_vulnerability_scan": WebVulnHandler,
+    "forensic_analysis": forensic_analysis,
+    "steganography_detector": steganography_detector,
+    "port_knocking_detector": port_knocking_detector,
+    "social_engineering_analysis": social_engineering_analysis,
+    "exploitation": runExploits,
+    "whois_lookup": lookup_handler,
+    "dns_lookup": lookup_handler,
+    "ip_geolocation": lookup_handler,
+    "ssl_certificate_lookup": lookup_handler,
+    "mac_address_lookup": lookup_handler,
+    "email_verification": lookup_handler,
+    "threat_intelligence_lookup": lookup_handler,
+    "domain_availability": lookup_handler,
+}
+
+def tasksfinder(user_query):
+    client = AzureClient.get_client() 
+    deployment = AzureClient.deployment
+
+    history = memory.get_history() 
+    #print(f"User history -> {history}")
+    response = client.chat.completions.create(
+        model=deployment,
+        messages=[
+            {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
+            {"role": "system", "content": f"User history -> {history}"},
+            {"role": "user", "content": user_query},
+        ],
+        functions=functions,  
+        stream=False
+    )
+
+    out = response.choices[0].message.function_call
+
+    if out and hasattr(out, "name"):
+        func_name = out.name
+        task_func = task_map.get(func_name, lambda user_query: print("❌ Unknown function"))
+        return task_func(user_query)
+
+    output=response.choices[0].message.content
+    memory.add_message(user_input=user_query,bot_response=output)
+    return output
