@@ -1,42 +1,87 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Sidebar from './components/SideBar';
-import ChatArea from './components/ChatArea';
-import TaskList from './components/TaskList';
-import InputForm from './components/InputForm';
-import Test from './components/Test';
+import React, { useState } from "react";
+import Sidebar from "./components/SideBar";
+import ChatArea from "./components/ChatArea";
+import TaskList from "./components/TaskList";
+import InputForm from "./components/InputForm";
 
 type Message = {
-  type: 'user' | 'bot';
+  type: "user" | "bot";
   content: string;
 };
 
 type Task = {
   id: string;
   name: string;
-  status: 'running' | 'completed' | 'failed';
+  status: "running" | "completed" | "failed";
   progress: number;
 };
 
 function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [tasks] = useState<Task[]>([
-    { id: '1', name: 'Port Scanning', status: 'running', progress: 45 },
-    { id: '2', name: 'Vulnerability Assessment', status: 'completed', progress: 100 }
+    { id: "1", name: "Port Scanning", status: "running", progress: 45 },
+    { id: "2", name: "Vulnerability Assessment", status: "completed", progress: 100 },
   ]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-
-    setMessages([...messages, { type: 'user', content: input }]);
-    setTimeout(() => {
-      setMessages(prev => [...prev, { type: 'bot', content: 'Processing your security request...' }]);
-    }, 1000);
-    setInput('');
+  
+    // Add user's message to the chat and create an empty bot message
+    setMessages(prev => [...prev, { type: "user", content: input }, { type: "bot", content: "" }]);
+    setInput("");
+  
+    // Create an AbortController to handle request cancellation
+    const controller = new AbortController();
+    const signal = controller.signal;
+  
+    try {
+      const response = await fetch("http://127.0.0.1:5000/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query: input }),
+        signal,
+      });
+  
+      if (!response.ok) throw new Error("Failed to connect to SSE stream");
+  
+      // Read the response as a stream
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder("utf-8");
+  
+      let accumulatedMessage = ""; // Stores the full bot response
+  
+      if (reader) {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+  
+          const text = decoder.decode(value, { stream: true });
+          console.log("Raw SSE Response:", text); // Log full SSE response
+  
+          accumulatedMessage += text; // Append new chunk to accumulated message
+  
+          // Update the last bot message instead of adding a new one
+          setMessages(prev => {
+            return prev.map((msg, index) =>
+              index === prev.length - 1 && msg.type === "bot"
+                ? { ...msg, content: accumulatedMessage } // Update last bot message
+                : msg
+            );
+          });
+        }
+      }
+    } catch (error) {
+      console.error("SSE Error:", error);
+    } finally {
+      controller.abort(); // Close the connection when finished
+    }
   };
-
+  
+  
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
       <Sidebar />
@@ -49,16 +94,4 @@ function Chat() {
   );
 }
 
-function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/test" element={<Test />} />
-        <Route path="*" element={<Navigate to="/chat" replace />} />
-      </Routes>
-    </Router>
-  );
-}
-
-export default App;
+export default Chat;

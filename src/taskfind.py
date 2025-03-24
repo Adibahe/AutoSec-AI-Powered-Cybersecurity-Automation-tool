@@ -239,5 +239,6 @@ def tasksfinder(user_query):
 
         task_func = task_map.get(func_name, lambda query: " Unknown function")
         result = task_func(user_query)
-        yield f"\nFunction execution result:\n{result}\n"
+        yield f"data: Function execution result:\n{result}\n\n"
+
 

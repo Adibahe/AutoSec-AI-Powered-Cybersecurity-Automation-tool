@@ -6,6 +6,7 @@ from Memory import MemorySingleton
 memory = MemorySingleton()
 
 def scanner(user_query):
+    # yield f"\nscanning taks. . . :\n"
     print("scanning task ....")
     client = AzureClient.get_client()
     deployment = AzureClient.deployment
@@ -63,6 +64,7 @@ def scanner(user_query):
         memory.add_message(user_input=user_query, bot_response=output)
 
         print(output)
+        return output
 
 def scan(ip, arguments):
     nm = nmap.PortScanner()

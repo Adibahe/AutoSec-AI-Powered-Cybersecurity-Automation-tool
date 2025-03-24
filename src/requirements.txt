@@ -5,3 +5,4 @@ hashcat
 requests
 langchain
 flask
+flask-cors
