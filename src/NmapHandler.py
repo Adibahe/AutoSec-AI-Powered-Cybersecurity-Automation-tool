@@ -6,10 +6,13 @@ from Memory import MemorySingleton
 memory = MemorySingleton()
 
 def scanner(user_query):
-    # yield f"\nscanning taks. . . :\n"
+    yield f"\n Scanning task ...\n"
     print("scanning task ....")
+    
     client = AzureClient.get_client()
     deployment = AzureClient.deployment
+
+    # Get the function call from the model
     response = client.chat.completions.create(
         model=deployment,
         messages=[
@@ -19,36 +22,38 @@ def scanner(user_query):
         functions=functions,
         stream=False
     )
-    
+
     out = response.choices[0].message.function_call
-    
+
     if out is not None:
         print("Running Nmap scan...")
         params = out.arguments
-
         name = out.name
         params_dict = json.loads(params)
         ip = params_dict.get("ip", "")
         arguments = params_dict.get("arguments", [])
+        yield f"\n \n"
 
         args_str = " ".join(arguments)
         command = f"{ip} {args_str}"
 
-        # Mapping function names to actual functions instead of eval
         function_map = {
-            "scan": scan
+            "scan": scan  # Ensure `scan` is a blocking function
         }
 
         if name in function_map:
-            out = function_map[name](ip, arguments)
+            yield f"\nRunning scan on {ip} with arguments: {args_str}\n"
+            
+            # ⏳ **Block here until scan completes** ⏳
+            scan_results = function_map[name](ip, arguments)  # `scan()` is blocking
+
         else:
-            raise ValueError(f"Unknown function name: {name}")
+            yield f"⚠️ Error: Unknown function name: {name}\n"
+            return
 
-        out_str = json.dumps(out, indent=2)
+        out_str = json.dumps(scan_results, indent=2)
 
-        # Retrieve history from memory
         history = memory.get_history()
-
         response = client.chat.completions.create(
             model=deployment,
             messages=[
@@ -56,15 +61,16 @@ def scanner(user_query):
                 {"role": "system", "content": f"User history -> {history}"},
                 {"role": "system", "content": f"An Nmap command was run -> {command}\nThe output of the user's query is:\n{out_str}"}
             ],
-            stream=False
+            stream=True
         )
 
-        output = response.choices[0].message.content
-        # Store user query and response in memory
-        memory.add_message(user_input=user_query, bot_response=output)
+        yield "\nFinal Scan Result:\n"
 
-        print(output)
-        return output
+     
+        for chunk in response:
+            if chunk.choices and hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta:
+                yield chunk.choices[0].delta.content
+
 
 def scan(ip, arguments):
     nm = nmap.PortScanner()

@@ -237,8 +237,11 @@ def tasksfinder(user_query):
         except json.JSONDecodeError:
             print("⚠️ Warning: Function arguments are not valid JSON.")
 
-        task_func = task_map.get(func_name, lambda query: " Unknown function")
-        result = task_func(user_query)
-        yield f"data: Function execution result:\n{result}\n\n"
+        task_func = task_map.get(func_name)
 
+        if task_func:
+            for output in task_func(user_query):  # Correctly streaming the generator output
+                yield output
+        else:
+            yield f"⚠️ Error: Unknown function '{func_name}'\n"
 
