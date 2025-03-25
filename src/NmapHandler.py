@@ -3,16 +3,25 @@ import json
 from Model_client import AzureClient
 from Memory import MemorySingleton
 
+
 memory = MemorySingleton()
+class BaseModel:
+    def __init__(self, data="", istool=False, tool_out=""):
+        self.data = data
+        self.istool = istool
+        self.tool_out = tool_out
+
+    def to_json(self):
+        return json.dumps(self.__dict__)  # ✅ Ensures valid JSON
 
 def scanner(user_query):
-    yield f"\n Scanning task ...\n"
-    print("scanning task ....")
-    
+   
+    yield f"{json.dumps({'data': "Scanning task...", 'istool': False, 'tool_out': ''})}\n" 
+    print("Scanning task ....")
+
     client = AzureClient.get_client()
     deployment = AzureClient.deployment
 
-    # Get the function call from the model
     response = client.chat.completions.create(
         model=deployment,
         messages=[
@@ -29,29 +38,33 @@ def scanner(user_query):
         print("Running Nmap scan...")
         params = out.arguments
         name = out.name
-        params_dict = json.loads(params)
+
+        try:
+            params_dict = json.loads(params)
+        except json.JSONDecodeError:
+          
+            yield f"{json.dumps({'data': "Error: Invalid function arguments", 'istool': False, 'tool_out': ''})}\n" 
+            return  
+
         ip = params_dict.get("ip", "")
         arguments = params_dict.get("arguments", [])
-        yield f"\n \n"
-
         args_str = " ".join(arguments)
         command = f"{ip} {args_str}"
 
-        function_map = {
-            "scan": scan  # Ensure `scan` is a blocking function
-        }
+        function_map = {"scan": scan}
 
         if name in function_map:
-            yield f"\nRunning scan on {ip} with arguments: {args_str}\n"
+           
+            yield f"{json.dumps({'data': f"Running scan on {ip} with arguments: {args_str}", 'istool': False, 'tool_out': ''})}\n" 
+
+            # Run scan
+            scan_results = function_map[name](ip, arguments)
+            scan_results_str = json.dumps(scan_results, indent=2)
             
-            # ⏳ **Block here until scan completes** ⏳
-            scan_results = function_map[name](ip, arguments)  # `scan()` is blocking
-
+            yield json.dumps({"data": "Scan completed.", "istool": True, "tool_out": scan_results_str}) + "\n"
         else:
-            yield f"⚠️ Error: Unknown function name: {name}\n"
+            yield json.dumps({"data": f"⚠️ Error: Unknown function name: {name}", "istool": False, "tool_out": ""}) + "\n"
             return
-
-        out_str = json.dumps(scan_results, indent=2)
 
         history = memory.get_history()
         response = client.chat.completions.create(
@@ -59,25 +72,21 @@ def scanner(user_query):
             messages=[
                 {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
                 {"role": "system", "content": f"User history -> {history}"},
-                {"role": "system", "content": f"An Nmap command was run -> {command}\nThe output of the user's query is:\n{out_str}"}
+                {"role": "system", "content": f"An Nmap command was run -> {command}\nThe output of the user's query is:\n{scan_results_str}"}
             ],
             stream=True
         )
 
-        yield "\nFinal Scan Result:\n"
-
-     
         for chunk in response:
             if chunk.choices and hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta:
-                yield chunk.choices[0].delta.content
-
+                yield json.dumps({"data": chunk.choices[0].delta.content, "istool": False, "tool_out": ""}) + "\n"
 
 def scan(ip, arguments):
     nm = nmap.PortScanner()
     args_str = " ".join(arguments)
     nm.scan(ip, arguments=args_str)
     print(f"Running command: {ip} {args_str}")
-    
+
     result = {}
     for host in nm.all_hosts():
         result[host] = {
@@ -85,13 +94,13 @@ def scan(ip, arguments):
             "state": nm[host].state(),
             "protocols": {}
         }
-        
+
         for proto in nm[host].all_protocols():
             result[host]["protocols"][proto] = {}
             ports = nm[host][proto].keys()
             for port in sorted(ports):
                 result[host]["protocols"][proto][port] = nm[host][proto][port]["state"]
-    
+
     return result
 
 functions = [
@@ -109,19 +118,6 @@ functions = [
                     "type": "array",
                     "items": {"type": "string"},
                     "description": """List of Nmap arguments to customize the scan. 
-
-Available arguments:
-- **Port Scanning**: `-p 80,22` (specific ports), `-p 80-100` (range of ports)
-- **Service & Version Detection**: `-sV`
-- **OS Detection**: `-O`
-- **Aggressive Scan**: `-A`
-- **Ping Scan**: `-sn`
-- **Fast Scan**: `-F`
-- **UDP Scan**: `-sU`
-- **Scan Entire Subnet**: `-p 22,80,443 192.168.1.0/24`
-- **Stealth Scan (SYN)**: `-sS`
-- **Disable DNS Resolution**: `-n`
-- **TCP Connect Scan**: `-sT`
 
 Example: `["-p 22,80,443", "-sV"]` 
 """

@@ -189,6 +189,17 @@ task_map = {
 #     return output
 
 
+import json
+
+class BaseModel:
+    def __init__(self, data="", istool=False, tool_out=""):
+        self.data = data
+        self.istool = istool
+        self.tool_out = tool_out
+
+    def to_json(self):
+        return json.dumps(self.__dict__)  # ✅ Ensures valid JSON
+
 def tasksfinder(user_query):
     client = AzureClient.get_client() 
     deployment = AzureClient.deployment
@@ -212,36 +223,34 @@ def tasksfinder(user_query):
     for chunk in response:  
         if not chunk.choices:
             continue  
-        
-        delta = chunk.choices[0].delta 
-        # print("Chunk Data:", json.dumps(chunk.model_dump(), indent=2))  #enable this for debugging purpose
 
-        
+        delta = chunk.choices[0].delta 
+
         if hasattr(delta, "function_call") and delta.function_call:
             function_call_detected = True
             if delta.function_call.name:
                 func_name = delta.function_call.name  
             if delta.function_call.arguments:
-                func_args += delta.function_call.arguments  
+                func_args += delta.function_call.arguments  # 🚀 Accumulate function args safely
 
-      
         if hasattr(delta, "content") and delta.content:
-            yield f"{delta.content}"
+            yield f"{json.dumps({'data': delta.content, 'istool': False, 'tool_out': ''})}\n"  # ✅ Ensure valid JSON
 
     if function_call_detected and func_name:
         print(f"\nFunction Call Detected: {func_name}")
         print(f"Function Arguments: {func_args}")
 
         try:
-            func_args = json.loads(func_args)
+            func_args = json.loads(func_args)  # ✅ Convert args to dict
         except json.JSONDecodeError:
             print("⚠️ Warning: Function arguments are not valid JSON.")
+            yield f"{json.dumps({'data': '⚠️ Error: Invalid function arguments', 'istool': False, 'tool_out': ''})}\n"
+            return  
 
         task_func = task_map.get(func_name)
 
         if task_func:
-            for output in task_func(user_query):  # Correctly streaming the generator output
-                yield output
+            for output in task_func(user_query):  
+                yield f"{output}\n"  # ✅ Always valid JSON
         else:
-            yield f"⚠️ Error: Unknown function '{func_name}'\n"
-
+            yield f"{json.dumps({'data': f'⚠️ Error: Unknown function {func_name}', 'istool': False, 'tool_out': ''})}\n"

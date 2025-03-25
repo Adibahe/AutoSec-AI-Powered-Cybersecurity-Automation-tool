@@ -5,8 +5,13 @@ import TaskList from "./components/TaskList";
 import InputForm from "./components/InputForm";
 
 type Message = {
-  type: "user" | "bot";
+  type: "user";
   content: string;
+} | {
+  type: "bot";
+  content: string;
+  istool?: boolean;
+  tool_out?: string;
 };
 
 type Task = {
@@ -14,6 +19,12 @@ type Task = {
   name: string;
   status: "running" | "completed" | "failed";
   progress: number;
+};
+
+type BaseModel = {
+  data: string;
+  istool: boolean;
+  tool_out: string;
 };
 
 function Chat() {
@@ -27,15 +38,13 @@ function Chat() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-  
-    // Add user's message to the chat and create an empty bot message
+
     setMessages(prev => [...prev, { type: "user", content: input }, { type: "bot", content: "" }]);
     setInput("");
-  
-    // Create an AbortController to handle request cancellation
+
     const controller = new AbortController();
     const signal = controller.signal;
-  
+
     try {
       const response = await fetch("http://127.0.0.1:5000/stream", {
         method: "POST",
@@ -45,43 +54,59 @@ function Chat() {
         body: JSON.stringify({ query: input }),
         signal,
       });
-  
+
       if (!response.ok) throw new Error("Failed to connect to SSE stream");
-  
-      // Read the response as a stream
+
       const reader = response.body?.getReader();
       const decoder = new TextDecoder("utf-8");
-  
-      let accumulatedMessage = ""; // Stores the full bot response
-  
+
+      let accumulatedMessage = "";
+      let partialChunk = ""; // Store incomplete JSON data
+
       if (reader) {
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-  
+
           const text = decoder.decode(value, { stream: true });
-          console.log("Raw SSE Response:", text); // Log full SSE response
-  
-          accumulatedMessage += text; // Append new chunk to accumulated message
-  
-          // Update the last bot message instead of adding a new one
-          setMessages(prev => {
-            return prev.map((msg, index) =>
-              index === prev.length - 1 && msg.type === "bot"
-                ? { ...msg, content: accumulatedMessage } // Update last bot message
-                : msg
-            );
-          });
+          console.log("Raw SSE Response:", text); // Debugging log
+
+          partialChunk += text; // Append new chunk
+
+          // Process each complete JSON line separately
+          const jsonObjects = partialChunk.split("\n").filter(line => line.trim());
+
+          for (const json of jsonObjects) {
+            try {
+              const parsed: BaseModel = JSON.parse(json);
+              accumulatedMessage += parsed.data; // Append extracted data
+
+              setMessages(prev =>
+                prev.map((msg, index) =>
+                  index === prev.length - 1 && msg.type === "bot"
+                    ? {
+                        ...msg,
+                        content: accumulatedMessage,
+                        ...(parsed.istool ? { istool: true, tool_out: parsed.tool_out } : {}),
+                      }
+                    : msg
+                )
+              );
+
+              partialChunk = ""; 
+            } catch (error) {
+              console.warn("Waiting for full JSON object:", error);
+            }
+          }
         }
       }
     } catch (error) {
       console.error("SSE Error:", error);
     } finally {
-      controller.abort(); // Close the connection when finished
+      controller.abort();
     }
   };
-  
-  
+
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
       <Sidebar />
