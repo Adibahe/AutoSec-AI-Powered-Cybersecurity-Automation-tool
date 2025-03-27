@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Menu, X } from "lucide-react"; // Import icons for toggle button
 import Sidebar from "./components/SideBar";
 import ChatArea from "./components/ChatArea";
 import TaskList from "./components/TaskList";
@@ -34,6 +35,7 @@ function Chat() {
     { id: "1", name: "Port Scanning", status: "running", progress: 45 },
     { id: "2", name: "Vulnerability Assessment", status: "completed", progress: 100 },
   ]);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true); // State to toggle sidebar visibility
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,11 +111,40 @@ function Chat() {
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <ChatArea messages={messages} />
-        <InputForm input={input} setInput={setInput} handleSubmit={handleSubmit} />
+      {/* Toggle Button */}
+      <button
+        className="absolute top-4 left-4 z-10 bg-gray-700 text-white p-2 rounded-full hover:bg-gray-600 transition"
+        onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+      >
+        {isSidebarVisible ? <X size={20} /> : <Menu size={20} />}
+      </button>
+
+      {/* Sidebar */}
+      {isSidebarVisible && <Sidebar />}
+
+      {/* Main Content */}
+      <div
+        className={`flex-1 flex flex-col ${
+          isSidebarVisible ? "lg:ml-30" : "ml-0"
+        } transition-all`}
+      >
+        <div className="flex-1 flex flex-col justify-between p-4">
+          {/* Chat Area */}
+          <ChatArea messages={messages} />
+
+          {/* Input Form */}
+          <div className="mt-4 flex justify-center">
+            <div className="w-full max-w-3xl">
+              <InputForm
+                input={input}
+                setInput={setInput}
+                handleSubmit={handleSubmit}
+              />
+            </div>
+          </div>
+        </div>
       </div>
+
       <TaskList tasks={tasks} />
     </div>
   );
