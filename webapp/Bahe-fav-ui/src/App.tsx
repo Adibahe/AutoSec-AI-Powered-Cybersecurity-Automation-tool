@@ -123,9 +123,26 @@ function Chat() {
       {isSidebarVisible && <Sidebar />}
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col ${isSidebarVisible ? "ml-64" : "ml-0"} transition-all`}>
-        <ChatArea messages={messages} />
-        <InputForm input={input} setInput={setInput} handleSubmit={handleSubmit} />
+      <div
+        className={`flex-1 flex flex-col ${
+          isSidebarVisible ? "lg:ml-30" : "ml-0"
+        } transition-all`}
+      >
+        <div className="flex-1 flex flex-col justify-between p-4">
+          {/* Chat Area */}
+          <ChatArea messages={messages} />
+
+          {/* Input Form */}
+          <div className="mt-4 flex justify-center">
+            <div className="w-full max-w-3xl">
+              <InputForm
+                input={input}
+                setInput={setInput}
+                handleSubmit={handleSubmit}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <TaskList tasks={tasks} />
