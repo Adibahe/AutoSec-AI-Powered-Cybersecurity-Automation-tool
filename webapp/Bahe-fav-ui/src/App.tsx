@@ -1,19 +1,20 @@
 import React, { useState } from "react";
-import { Menu, X } from "lucide-react"; // Import icons for toggle button
 import Sidebar from "./components/SideBar";
 import ChatArea from "./components/ChatArea";
 import TaskList from "./components/TaskList";
 import InputForm from "./components/InputForm";
 
-type Message = {
-  type: "user";
-  content: string;
-} | {
-  type: "bot";
-  content: string;
-  istool?: boolean;
-  tool_out?: string;
-};
+type Message =
+  | {
+      type: "user";
+      content: string;
+    }
+  | {
+      type: "bot";
+      content: string;
+      istool?: boolean;
+      tool_out?: string;
+    };
 
 type Task = {
   id: string;
@@ -35,12 +36,14 @@ function Chat() {
     { id: "1", name: "Port Scanning", status: "running", progress: 45 },
     { id: "2", name: "Vulnerability Assessment", status: "completed", progress: 100 },
   ]);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true); // State to toggle sidebar visibility
+
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
+    setLoading(true);
     setMessages(prev => [...prev, { type: "user", content: input }, { type: "bot", content: "" }]);
     setInput("");
 
@@ -63,7 +66,7 @@ function Chat() {
       const decoder = new TextDecoder("utf-8");
 
       let accumulatedMessage = "";
-      let partialChunk = ""; // Store incomplete JSON data
+      let partialChunk = "";
 
       if (reader) {
         while (true) {
@@ -71,17 +74,15 @@ function Chat() {
           if (done) break;
 
           const text = decoder.decode(value, { stream: true });
-          console.log("Raw SSE Response:", text); // Debugging log
+          console.log("Raw SSE Response:", text);
 
-          partialChunk += text; // Append new chunk
-
-          // Process each complete JSON line separately
+          partialChunk += text;
           const jsonObjects = partialChunk.split("\n").filter(line => line.trim());
 
           for (const json of jsonObjects) {
             try {
               const parsed: BaseModel = JSON.parse(json);
-              accumulatedMessage += parsed.data; // Append extracted data
+              accumulatedMessage += parsed.data;
 
               setMessages(prev =>
                 prev.map((msg, index) =>
@@ -95,7 +96,7 @@ function Chat() {
                 )
               );
 
-              partialChunk = ""; 
+              partialChunk = "";
             } catch (error) {
               console.warn("Waiting for full JSON object:", error);
             }
@@ -105,46 +106,18 @@ function Chat() {
     } catch (error) {
       console.error("SSE Error:", error);
     } finally {
+      setLoading(false);
       controller.abort();
     }
   };
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
-      {/* Toggle Button */}
-      <button
-        className="absolute top-4 left-4 z-10 bg-gray-700 text-white p-2 rounded-full hover:bg-gray-600 transition"
-        onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-      >
-        {isSidebarVisible ? <X size={20} /> : <Menu size={20} />}
-      </button>
-
-      {/* Sidebar */}
-      {isSidebarVisible && <Sidebar />}
-
-      {/* Main Content */}
-      <div
-        className={`flex-1 flex flex-col ${
-          isSidebarVisible ? "lg:ml-30" : "ml-0"
-        } transition-all`}
-      >
-        <div className="flex-1 flex flex-col justify-between p-4">
-          {/* Chat Area */}
-          <ChatArea messages={messages} />
-
-          {/* Input Form */}
-          <div className="mt-4 flex justify-center">
-            <div className="w-full max-w-3xl">
-              <InputForm
-                input={input}
-                setInput={setInput}
-                handleSubmit={handleSubmit}
-              />
-            </div>
-          </div>
-        </div>
+      <Sidebar />
+      <div className="flex-1 flex flex-col">
+        <ChatArea messages={messages} />
+        <InputForm input={input} setInput={setInput} handleSubmit={handleSubmit} loading={loading} />
       </div>
-
       <TaskList tasks={tasks} />
     </div>
   );

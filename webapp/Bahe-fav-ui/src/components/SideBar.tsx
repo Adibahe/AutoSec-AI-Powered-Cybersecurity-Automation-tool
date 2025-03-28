@@ -2,12 +2,25 @@
 import React from 'react';
 import { Shield, Search, Database, Terminal } from 'lucide-react';
 
+
+
 const tools = [
+
+
   { name: 'Nmap Scanner', icon: <Search size={20} />, link: 'https://nmap.org/book/intro.html' },
+
+
   { name: 'SQLMap', icon: <Database size={20} />, link: 'https://www.cyberbugs.in/post/what-is-sqlmap' },
+
+
   { name: 'DNS Lookup', icon: <Terminal size={20} />, link: 'https://denizhalil.com/2024/08/30/what-is-dns-lookup-nslookup-examples/' },
+
+
   { name: 'Security Audit', icon: <Shield size={20} />, link: 'https://qualysec.com/what-is-security-audit/' },
+
+
   { name: 'Exploitation', icon: <Shield size={20} />, link: 'https://example.com/exploitation' },
+
 ];
 
 const Sidebar = () => (
