@@ -1,5 +1,7 @@
+
 import React, { useState } from "react";
 import { Terminal, ChevronDown, ChevronUp } from "lucide-react";
+import TypingIndicator from "./TypingIndicator";
 
 interface Message {
   type: "user" | "bot";
@@ -10,9 +12,10 @@ interface Message {
 
 interface Props {
   messages: Message[];
+  isTyping?: boolean;
 }
 
-const ChatArea: React.FC<Props> = ({ messages }) => {
+const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
   const [expandedTools, setExpandedTools] = useState<string[]>([]);
 
   const toggleToolOutput = (index: number) => {
@@ -55,6 +58,13 @@ const ChatArea: React.FC<Props> = ({ messages }) => {
           </div>
         </div>
       ))}
+      
+      {/* Typing indicator */}
+      {isTyping && (
+        <div className="flex justify-start">
+          <TypingIndicator />
+        </div>
+      )}
     </div>
   );
 };
