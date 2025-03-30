@@ -38,12 +38,16 @@ function Chat() {
   ]);
 
   const [loading, setLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
     setLoading(true);
+    setIsTyping(true); // ✅ Set isTyping to true before request
+    console.log("Typing state:", isTyping); // Debugging log
+
     setMessages(prev => [...prev, { type: "user", content: input }, { type: "bot", content: "" }]);
     setInput("");
 
@@ -107,6 +111,8 @@ function Chat() {
       console.error("SSE Error:", error);
     } finally {
       setLoading(false);
+      setIsTyping(false); 
+      console.log("Typing state:", isTyping); // Debugging log
       controller.abort();
     }
   };
@@ -115,7 +121,7 @@ function Chat() {
     <div className="flex h-screen bg-gray-900 text-gray-100">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <ChatArea messages={messages} />
+        <ChatArea messages={messages} isTyping={isTyping} /> {/* ✅ Pass isTyping */}
         <InputForm input={input} setInput={setInput} handleSubmit={handleSubmit} loading={loading} />
       </div>
       <TaskList tasks={tasks} />

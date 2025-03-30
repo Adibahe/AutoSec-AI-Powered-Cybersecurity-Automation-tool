@@ -1,11 +1,11 @@
-import React from 'react';
+import React from "react";
 
-const TypingIndicator = () => {
+const TypingIndicator: React.FC = () => {
   return (
-    <div className="flex space-x-2 p-3 bg-gray-800 rounded-lg max-w-[100px]">
-      <div className="w-2.5 h-2.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-      <div className="w-2.5 h-2.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
-      <div className="w-2.5 h-2.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
+    <div className="flex space-x-1">
+      <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></span>
+      <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+      <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
     </div>
   );
 };

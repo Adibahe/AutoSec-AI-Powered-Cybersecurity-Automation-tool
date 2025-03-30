@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Terminal, ChevronDown, ChevronUp } from "lucide-react";
 import TypingIndicator from "./TypingIndicator";
@@ -29,16 +28,27 @@ const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-4">
       {messages.map((message, index) => (
-        <div key={index} className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
-          <div className={`max-w-[70%] rounded-lg p-4 ${message.type === "user" ? "bg-cyan-600 text-white" : "bg-gray-800 text-gray-100"}`}>
-            <pre className="whitespace-pre-wrap font-sans">{message.content}</pre>
+        <div
+          key={index}
+          className={`flex ${message.type === "user" ? "justify-end" : "justify-start"} w-full`}
+        >
+          <div
+            className={`max-w-[75%] p-4 rounded-2xl shadow-md transition-colors ${
+              message.type === "user"
+                ? "bg-transparent border border-blue-500 text-white self-end" 
+                : "bg-gray-700 text-gray-100 self-start"
+            }`}
+          >
+            <p className="whitespace-pre-wrap font-sans text-base md:text-lg leading-relaxed">
+              {message.content}
+            </p>
 
-            {/* Show Tool Output Button ONLY if this message has tool output */}
+            {/* Tool Output Section */}
             {message.istool && message.tool_out && (
               <div className="mt-3">
                 <button
                   onClick={() => toggleToolOutput(index)}
-                  className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
+                  className="flex items-center gap-2 text-sm text-blue-400 hover:text-white transition-colors"
                 >
                   <Terminal className="w-4 h-4" />
                   <span>Tool Output</span>
@@ -49,7 +59,7 @@ const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
                   )}
                 </button>
                 {expandedTools.includes(index.toString()) && (
-                  <pre className="mt-2 p-3 bg-black rounded text-sm text-gray-300 overflow-x-auto">
+                  <pre className="mt-2 p-4 bg-gray-800 text-gray-200 font-mono text-sm rounded-lg overflow-x-auto max-h-40 border border-gray-600">
                     {message.tool_out}
                   </pre>
                 )}
@@ -58,8 +68,8 @@ const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
           </div>
         </div>
       ))}
-      
-      {/* Typing indicator */}
+
+      {/* Typing Indicator */}
       {isTyping && (
         <div className="flex justify-start">
           <TypingIndicator />
