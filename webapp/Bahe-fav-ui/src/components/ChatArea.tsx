@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Terminal, ChevronDown, ChevronUp } from "lucide-react";
 import TypingIndicator from "./TypingIndicator";
 
@@ -16,6 +16,14 @@ interface Props {
 
 const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
   const [expandedTools, setExpandedTools] = useState<string[]>([]);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Automatically scroll to the bottom when messages update
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const toggleToolOutput = (index: number) => {
     setExpandedTools((prev) =>
@@ -26,7 +34,7 @@ const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+    <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
       {messages.map((message, index) => (
         <div
           key={index}
@@ -35,7 +43,7 @@ const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
           <div
             className={`max-w-[75%] p-4 rounded-2xl shadow-md transition-colors ${
               message.type === "user"
-                ? "bg-transparent border border-blue-500 text-white self-end" 
+                ? "bg-transparent border border-blue-500 text-white self-end"
                 : "bg-gray-700 text-gray-100 self-start"
             }`}
           >
