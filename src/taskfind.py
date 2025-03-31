@@ -7,6 +7,7 @@ from SqlMapHandler import WebVulnHandler
 import json
 from Memory import MemorySingleton
 from WPScanHandler import WPScanHandler
+from KatanaHandler import SpiderScan
 
 memory = MemorySingleton()
 
@@ -125,8 +126,13 @@ functions = [
             }
         },
         "required": ["target_url"]
-    }
-}
+    }   
+},{
+    
+        "name": "SpiderScan",
+        "description": "Performs web spider scans ,if user ask for spider some website or crawl some url etc ,or ask to run tools like katana",
+        "parameters": {"type": "object", "properties": {}}
+    },
 ]
 
 wpscan = WPScanHandler()
@@ -145,6 +151,7 @@ task_map = {
     "threat_intelligence_lookup": lookup_handler,
     "domain_availability": lookup_handler,
     "wpscan": wpscan.scan,
+    "SpiderScan":SpiderScan
 }
 
 #old one 
