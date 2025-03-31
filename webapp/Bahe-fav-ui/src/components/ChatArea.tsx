@@ -53,7 +53,7 @@ const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
 
             {/* Tool Output Section */}
             {message.istool && message.tool_out && (
-              <div className="mt-3">
+              <div className="mt-3 max-w-full">
                 <button
                   onClick={() => toggleToolOutput(index)}
                   className="flex items-center gap-2 text-sm text-blue-400 hover:text-white transition-colors"
@@ -67,7 +67,7 @@ const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
                   )}
                 </button>
                 {expandedTools.includes(index.toString()) && (
-                  <pre className="mt-2 p-4 bg-gray-800 text-gray-200 font-mono text-sm rounded-lg overflow-x-auto max-h-40 border border-gray-600">
+                  <pre className="mt-2 p-4 bg-gray-800 text-gray-200 font-mono text-sm rounded-lg border border-gray-600 overflow-x-auto overflow-y-auto max-h-[400px] max-w-full">
                     {message.tool_out}
                   </pre>
                 )}

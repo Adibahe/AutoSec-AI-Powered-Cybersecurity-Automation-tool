@@ -17,7 +17,7 @@ api_key = os.getenv("WHOISXML_API_KEY")
 
 def whois_lookup(query):
     """Queries the WhoisXML API for domain names, IP addresses, or ASNs."""
-    yield f"{json.dumps({'data': "Performing DNS lookup task...", 'istool': False, 'tool_out': ''})}\n"
+
     base_url = "https://www.whoisxmlapi.com/whoisserver/WhoisService"
     url = f"{base_url}?apiKey={api_key}&domainName={query}&outputFormat=json&type=_all"
     try:
@@ -199,8 +199,7 @@ def lookup_handler(user_query):
 
 
             print("🔹 Response sent to AI Model:")
-            print(response.choices[0].message.content)
-            return response.choices[0].message.content
+
 
             
 functions.extend([

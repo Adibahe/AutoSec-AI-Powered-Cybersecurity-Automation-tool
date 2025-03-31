@@ -1,4 +1,3 @@
-
 from Model_client import AzureClient
 from NmapHandler import scanner
 from CrackerHandler import cracker
@@ -7,6 +6,7 @@ from LookupHandler import lookup_handler
 from SqlMapHandler import WebVulnHandler
 import json
 from Memory import MemorySingleton
+from WPScanHandler import WPScanHandler
 
 memory = MemorySingleton()
 
@@ -34,7 +34,7 @@ functions = [
     },
     {
         "name": "web_vulnerability_scan",
-        "description": "Scans a website for common vulnerabilities like XSS, SQL injection, etc.,tools like sqlmap ",
+        "description": "Scans a website for common vulnerabilities like XSS, SQL injection, etc.",
         "parameters": {"type": "object", "properties": {}}
     },
     {
@@ -106,48 +106,35 @@ functions = [
         "name": "domain_availability",
         "description": "Checks if a domain is available for registration.",
         "parameters": {"type": "object", "properties": {}}
+    },
+    {
+    
+        "name": "sqlmap_scan",
+        "description": "Performs SQL injection testing using sqlmap.",
+        "parameters": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "wpscan",
+        "description": "Scans a WordPress site for security vulnerabilities using WPScan.",
+        "parameters": {
+        "type": "object",
+        "properties": {
+            "target_url": {
+                "type": "string",
+                "description": "The URL of the WordPress site to scan."
+            }
+        },
+        "required": ["target_url"]
     }
+}
 ]
 
-
-def scan(user_query):
-    print("🔍 Running network scan...")
-
-def phishing_detector(user_query):
-    print("⚠️ Analyzing for phishing threats...")
-
-def malware_analysis(user_query):
-    print("🦠 Performing malware analysis...")
-
-# def web_vulnerability_scan(user_query):
-#     print("🌐 Scanning for web vulnerabilities...")
-
-def forensic_analysis(user_query):
-    print("🕵️ Performing digital forensic analysis...")
-
-def steganography_detector(user_query):
-    print("📷 Detecting hidden messages using steganalysis...")
-
-def port_knocking_detector(user_query):
-    print("🚪 Analyzing network traffic for port knocking attempts...")
-
-def social_engineering_analysis(user_query):
-    print("🗣️ Analyzing social engineering attacks...")
-
-
-
-
+wpscan = WPScanHandler()
 
 task_map = {
     "scan": scanner,
     "cracker": cracker,
-    "phishing_detector": phishing_detector,
-    "malware_analysis": malware_analysis,
     "web_vulnerability_scan": WebVulnHandler,
-    "forensic_analysis": forensic_analysis,
-    "steganography_detector": steganography_detector,
-    "port_knocking_detector": port_knocking_detector,
-    "social_engineering_analysis": social_engineering_analysis,
     "exploitation": runExploits,
     "whois_lookup": lookup_handler,
     "dns_lookup": lookup_handler,
@@ -157,6 +144,7 @@ task_map = {
     "email_verification": lookup_handler,
     "threat_intelligence_lookup": lookup_handler,
     "domain_availability": lookup_handler,
+    "wpscan": wpscan.scan,
 }
 
 #old one 
