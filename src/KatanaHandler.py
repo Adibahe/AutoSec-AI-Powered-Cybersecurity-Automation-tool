@@ -62,7 +62,7 @@ def spider(command):
     if result.stdout:
         output += result.stdout
     if result.stderr:
-        output += f"\n❌ Errors: {result.stderr}"
+        output += f"\n{result.stderr}"
     
     return output  
 

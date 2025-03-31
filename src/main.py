@@ -33,25 +33,26 @@ from pydantic import BaseModel
 import time
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all route
-# Define the UserQuery model using Pydantic
+CORS(app) 
+
 class UserQuery(BaseModel):
-    query: str  # User input query string
-
-# Function to generate SSE stream based on user query
+    query: str  
 
 
-# SSE route that accepts user input via POST request
+
+
 @app.route('/stream', methods=['POST'])
 def stream():
-    # Parse request JSON
+   
     data = request.get_json()
-    user_query = data.get("query", "Default Query")  # Default if query is missing
+    user_query = data.get("query", "Default Query") 
     print(user_query)
-    # Return SSE response
+  
     return Response(tasksfinder(user_query), content_type='text/event-stream')
 
-# Run the Flask app
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)
 

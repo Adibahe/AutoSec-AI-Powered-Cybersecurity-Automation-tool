@@ -1,100 +1,101 @@
 import os
 import json
 import subprocess
-from urllib.parse import urlparse
 from Model_client import AzureClient
 
-class WPScanHandler:
-    def __init__(self):
-        """
-        Initializes the WPScanHandler by fetching the API key securely from environment variables.
-        """
-        self.api_key = os.getenv("WPSCAN_API_KEY")  # Secure API Key storage
 
-        if not self.api_key:
-            raise ValueError("❌ WPScan API key is missing! Set WPSCAN_API_KEY as an environment variable.")
+def wpscan(user_query):
+    yield f"{json.dumps({'data': "Running WpScan ...", 'istool': False, 'tool_out': ''})}\n" 
 
-    def is_valid_url(self, url):
-        """
-        Validates if the provided URL is correctly formatted.
-        """
-        parsed_url = urlparse(url)
-        return bool(parsed_url.scheme and parsed_url.netloc)
+    client = AzureClient.get_client()
+    deployment = AzureClient.deployment
 
-    def scan(self, user_query):
-        """
-        Processes the user query, extracts the target URL, and performs a WPScan.
-        """
-        yield json.dumps({"status": "Performing wpscan ...."}) + "\n"
 
-        client = AzureClient.get_client()
-        deployment = AzureClient.deployment
+    response = client.chat.completions.create(
+        model=deployment,
+        messages=[
+            {"role": "system", "content": "You are a cyber bot and your task is to run Wpscan, etc. For that, run functions."},
+            {"role": "user", "content": user_query},
+        ],
+        functions=functions,
+        stream=False
+    )
+
+    out = response.choices[0].message.function_call
+
+    if out is not None:
         
+        func_name = out.name
+        func_args = json.loads(out.arguments)  
+        print(func_args)
+        command=func_args['command']
+        print(command)
+        output=scan(command=command)
+        print(output)
+        yield f"{json.dumps({'data': "task completed", 'istool': True, 'tool_out': output})}\n"
+
+     
         response = client.chat.completions.create(
             model=deployment,
             messages=[
-                {"role": "system", "content": "Extract the target URL from the user's query."},
-                {"role": "user", "content": user_query},
+                {"role": "system", "content": "You are a cyber bot that is capable of various tasks.,expalin the important parts of wpscan logs "},
+                {"role": "system", "content": f"An wpscan command was run -> {command}\nThe output of the user's query is:\n{output}"}
             ],
-            functions=functions,
-            stream=False
+            stream=True
         )
+        for chunk in response:
+            if chunk.choices and hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta:
+                yield json.dumps({"data": chunk.choices[0].delta.content, "istool": False, "tool_out": ""}) + "\n"
 
-        out = response.choices[0].message.function_call if response.choices else None
-        if not out or not hasattr(out, 'arguments'):
-            yield json.dumps({"error": "⚠ Could not extract target URL from query."}) + "\n"
-            return
 
-        try:
-            params_dict = json.loads(out.arguments)
-            target_url = params_dict.get("target_url", "")
-            if isinstance(target_url, set):
-                target_url = list(target_url)  # Ensure it's JSON serializable
-        except json.JSONDecodeError:
-            yield json.dumps({"error": "⚠ Invalid function arguments."}) + "\n"
-            return
+def scan(command):
+    print(f"🔍 Running wpscan with command: {command}")
 
-        if not self.is_valid_url(target_url):
-            yield json.dumps({"error": "❌ Invalid URL! Please enter a valid website URL."}) + "\n"
-            return
+    command_list = command.split(" ")
 
-        yield json.dumps({"data": f"🔍 Scanning {target_url} with WPScan...", "istool": False, "tool_out": ""}) + "\n"
-        print(f"🔍 Scanning {target_url} with WPScan...")
+    result = subprocess.run(command_list, capture_output=True, text=True)
 
-        command = [
-            "wpscan",
-            "--url", target_url,
-            "--api-token", self.api_key,
-            "--format", "json"
-        ]
+    output = ""
+    if result.stdout:
+        output += result.stdout
+    if result.stderr:
+        output += f"\n{result.stderr}"
+    
+    return output  
 
-        try:
-            result = subprocess.run(command, capture_output=True, text=True, check=True)
-            output = result.stdout.strip()
-            if output:
-                scan_results = json.loads(output)  # Convert JSON output to Python dictionary
-                scan_results_str = json.dumps(scan_results, indent=2)
-                yield json.dumps({"data": "✅ Scan completed.", "istool": True, "tool_out": scan_results_str}) + "\n"
-            else:
-                yield json.dumps({"error": "⚠ No output from WPScan. Check WPScan installation."}) + "\n"
-        except subprocess.CalledProcessError as e:
-            yield json.dumps({"error": f"⚠ WPScan execution failed: {e}"}) + "\n"
-        except json.JSONDecodeError:
-            yield json.dumps({"error": "⚠ Failed to parse WPScan JSON output. Please check WPScan installation."}) + "\n"
+
 
 functions = [
     {
-        "name": "scan",
-        "description": "Scans a WordPress site for vulnerabilities using WPScan.",
+        "name": "wpscan",
+        "description": "Performs WordPress security scanning using WPScan. It detects vulnerabilities, plugins, themes, and user enumeration.",
         "parameters": {
             "type": "object",
             "properties": {
-                "target_url": {
+                "command": {
                     "type": "string",
-                    "description": "The URL of the WordPress site to scan."
+                    "description": "The WPScan command to execute for scanning a WordPress site. Examples:\n\n"
+                                   "- `wpscan --url https://example.com`\n"
+                                   "  → Performs a basic scan of the WordPress site.\n\n"
+                                   "- `wpscan --url https://example.com --enumerate u`\n"
+                                   "  → Enumerates WordPress users on the site.\n\n"
+                                   "- `wpscan --url https://example.com --enumerate p`\n"
+                                   "  → Enumerates WordPress plugins to check for vulnerabilities.\n\n"
+                                   "- `wpscan --url https://example.com --enumerate t`\n"
+                                   "  → Enumerates WordPress themes and checks for known vulnerabilities.\n\n"
+                                   "- `wpscan --url https://example.com --api-token YOUR_API_TOKEN`\n"
+                                   "  → Uses an API token to fetch vulnerability data from WPScan's database.\n\n"
+                                   "- `wpscan --url https://example.com --proxy http://127.0.0.1:8080`\n"
+                                   "  → Uses a proxy for scanning.\n\n"
+                                   "- `wpscan --url https://example.com --force`\n"
+                                   "  → Forces the scan, even if the target has protection mechanisms.\n\n"
+                                   "- `wpscan --url https://example.com --stealthy`\n"
+                                   "  → Runs the scan in stealth mode to reduce detection chances.\n\n"
+                                   "- `wpscan --url https://example.com --output result.txt`\n"
+                                   "  → Saves scan results to a file."
                 }
             },
-            "required": ["target_url"]
+            "required": ["command"]
         }
     }
 ]

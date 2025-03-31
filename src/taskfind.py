@@ -6,7 +6,7 @@ from LookupHandler import lookup_handler
 from SqlMapHandler import WebVulnHandler
 import json
 from Memory import MemorySingleton
-from WPScanHandler import WPScanHandler
+from WPScanHandler import wpscan
 from KatanaHandler import SpiderScan
 
 memory = MemorySingleton()
@@ -114,20 +114,13 @@ functions = [
         "description": "Performs SQL injection testing using sqlmap.",
         "parameters": {"type": "object", "properties": {}}
     },
-    {
+     {
+    
         "name": "wpscan",
         "description": "Scans a WordPress site for security vulnerabilities using WPScan.",
-        "parameters": {
-        "type": "object",
-        "properties": {
-            "target_url": {
-                "type": "string",
-                "description": "The URL of the WordPress site to scan."
-            }
-        },
-        "required": ["target_url"]
-    }   
-},{
+        "parameters": {"type": "object", "properties": {}}
+    },   
+    {
     
         "name": "SpiderScan",
         "description": "Performs web spider scans ,if user ask for spider some website or crawl some url etc ,or ask to run tools like katana",
@@ -135,7 +128,7 @@ functions = [
     },
 ]
 
-wpscan = WPScanHandler()
+
 
 task_map = {
     "scan": scanner,
@@ -150,8 +143,9 @@ task_map = {
     "email_verification": lookup_handler,
     "threat_intelligence_lookup": lookup_handler,
     "domain_availability": lookup_handler,
-    "wpscan": wpscan.scan,
-    "SpiderScan":SpiderScan
+    "wpscan": wpscan,
+    "SpiderScan":SpiderScan,
+    "sqlmap_scan":WebVulnHandler
 }
 
 #old one 
