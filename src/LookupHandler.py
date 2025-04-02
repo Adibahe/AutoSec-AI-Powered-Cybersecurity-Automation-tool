@@ -212,6 +212,3 @@ functions.extend([
     {"name": "mac_address_lookup", "description": "Queries MAC address details.", "parameters": {"type": "object", "properties": {"mac": {"type": "string", "description": "The MAC address to look up."}}, "required": ["mac"]}},
     {"name": "domain_availability", "description": "Checks if a domain is available for registration.", "parameters": {"type": "object", "properties": {"domain": {"type": "string", "description": "The domain name to check."}}, "required": ["domain"]}}
 ])
-
-
-
