@@ -72,59 +72,34 @@ class BaseModel:
     def to_json(self):
         return json.dumps(self.__dict__)  # ✅ Ensures valid JSON
 
+import json
+from Model_client import AzureClient
+from functions import functions
+
 def tasksfinder(user_query):
-    print(extract_tool_chain(user_query))
+    tools = extract_tool_chain(user_query)  # Extract toolchain
+    print(tools)
+    if not tools:
+        print("No tools extracted.")
+        return
 
-    client = AzureClient.get_client() 
+    client = AzureClient.get_client()
     deployment = AzureClient.deployment
+    history = memory.get_history()
 
-    history = memory.get_history()  
-    response = client.chat.completions.create(
-        model=deployment,
-        messages=[
-            {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
-            {"role": "system", "content": f"User history -> {history}"},
-            {"role": "user", "content": user_query},
-        ],
-        functions=functions,  
-        stream=True  
-    )
+    for tool in tools:
+        func_name = tool["tool"]  # Extract only the tool name (remove "functions.")
+        params = json.dumps(tool["parameters"])  # Convert parameters to JSON
+        user_query = f"{tool['command']} with parameters: {params}"  # Generate user query
 
-    function_call_detected = False
-    func_name = None
-    func_args = ""
+        print(f"\nExecuting: {func_name} -> {user_query}")  # Debugging
 
-    for chunk in response:  
-        if not chunk.choices:
-            continue  
+        task_func = task_map.get(func_name)  # Get function from task_map
+        if not task_func:
+            print(f"⚠️ Error: Unknown function {func_name}")
+            yield json.dumps({'data': f'⚠️ Error: Unknown function {func_name}', 'istool': False, 'tool_out': ''}) + "\n"
+            continue
 
-        delta = chunk.choices[0].delta 
-
-        if hasattr(delta, "function_call") and delta.function_call:
-            function_call_detected = True
-            if delta.function_call.name:
-                func_name = delta.function_call.name  
-            if delta.function_call.arguments:
-                func_args += delta.function_call.arguments  # 🚀 Accumulate function args safely
-
-        if hasattr(delta, "content") and delta.content:
-            yield f"{json.dumps({'data': delta.content, 'istool': False, 'tool_out': ''})}\n"  # ✅ Ensure valid JSON
-
-    if function_call_detected and func_name:
-        print(f"\nFunction Call Detected: {func_name}")
-        print(f"Function Arguments: {func_args}")
-
-        try:
-            func_args = json.loads(func_args)  # ✅ Convert args to dict
-        except json.JSONDecodeError:
-            print("⚠️ Warning: Function arguments are not valid JSON.")
-            yield f"{json.dumps({'data': '⚠️ Error: Invalid function arguments', 'istool': False, 'tool_out': ''})}\n"
-            return  
-
-        task_func = task_map.get(func_name)
-
-        if task_func:
-            for output in task_func(user_query):  
-                yield f"{output}\n"  # ✅ Always valid JSON
-        else:
-            yield f"{json.dumps({'data': f'⚠️ Error: Unknown function {func_name}', 'istool': False, 'tool_out': ''})}\n"
+        # Call the function and yield results
+        for output in task_func(user_query):
+            yield output + "\n"  # Ensure valid JSON output

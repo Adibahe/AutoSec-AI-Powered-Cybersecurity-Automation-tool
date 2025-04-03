@@ -54,6 +54,11 @@ def extract_tool_chain(user_query):
                 try:
                     parsed_response = json.loads(content)
                     tool_chain = parsed_response.get("steps", [])
+
+                    for step in tool_chain:
+                        if "tool" in step:
+                            step["tool"] = step["tool"].replace("functions.", "")
+
                 except json.JSONDecodeError:
                     print("Invalid JSON format received from response.")
             else:
