@@ -189,7 +189,7 @@ class BaseModel:
     def to_json(self):
         return json.dumps(self.__dict__)  # ✅ Ensures valid JSON
 
-def tasksfinder(user_query):
+def tasksfinder(user_query,task):
     client = AzureClient.get_client() 
     deployment = AzureClient.deployment
 
@@ -200,6 +200,7 @@ def tasksfinder(user_query):
             {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
             {"role": "system", "content": f"User history -> {history}"},
             {"role": "user", "content": user_query},
+            {"role": "user", "content": "sub part of the query currenlty need to be performed:-"+task},
         ],
         functions=functions,  
         stream=True  
