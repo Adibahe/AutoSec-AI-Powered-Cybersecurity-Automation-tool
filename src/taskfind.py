@@ -8,126 +8,9 @@ import json
 from Memory import MemorySingleton
 from WPScanHandler import wpscan
 from KatanaHandler import SpiderScan
-
+from extractToolChain import extract_tool_chain
+from functions import functions
 memory = MemorySingleton()
-
-
-functions = [
-    {
-        "name": "scan",
-        "description": "Performs a network scan using tools like nmap.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "cracker",
-        "description": "Handles any task related to breaking or cracking passwords.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "phishing_detector",
-        "description": "Analyzes emails or URLs to detect phishing attempts.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "malware_analysis",
-        "description": "Performs static and dynamic analysis on a given file or URL to detect malware.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "web_vulnerability_scan",
-        "description": "Scans a website for common vulnerabilities like XSS, SQL injection, etc.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "forensic_analysis",
-        "description": "Performs digital forensic analysis on logs or disk images to identify security incidents.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "steganography_detector",
-        "description": "Detects hidden messages in images, audio, or text files using steganalysis.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "port_knocking_detector",
-        "description": "Analyzes network traffic to detect port knocking attempts.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "social_engineering_analysis",
-        "description": "Analyzes chat logs, emails, or messages for signs of social engineering attacks.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "exploitation",
-        "description": "Executes exploits against a target using tools like Metasploit or manual scripts.,if user asked to run tools like :- metasploit,searchsploit",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "whois_lookup",
-        "description": "Performs a WHOIS lookup on a domain or IP address.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "dns_lookup",
-        "description": "Performs a DNS lookup for a given domain.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "ip_geolocation",
-        "description": "Retrieves geolocation information for an IP address.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "reverse_ip_lookup",
-        "description": "Performs a reverse IP lookup.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "ssl_certificate_lookup",
-        "description": "Retrieves SSL certificate details for a given domain.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "mac_address_lookup",
-        "description": "Retrieves vendor details for a given MAC address.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "email_verification",
-        "description": "Verifies whether an email address is valid and deliverable.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "threat_intelligence_lookup",
-        "description": "Checks for security threats associated with a domain, IP, or URL.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "domain_availability",
-        "description": "Checks if a domain is available for registration.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-    
-        "name": "sqlmap_scan",
-        "description": "Performs SQL injection testing using sqlmap.",
-        "parameters": {"type": "object", "properties": {}}
-    },
-     {
-    
-        "name": "wpscan",
-        "description": "Scans a WordPress site for security vulnerabilities using WPScan.",
-        "parameters": {"type": "object", "properties": {}}
-    },   
-    {
-    
-        "name": "SpiderScan",
-        "description": "Performs web spider scans ,if user ask for spider some website or crawl some url etc ,or ask to run tools like katana",
-        "parameters": {"type": "object", "properties": {}}
-    },
-]
-
 
 
 task_map = {
@@ -148,36 +31,6 @@ task_map = {
     "sqlmap_scan":WebVulnHandler
 }
 
-#old one 
-# def tasksfinder(user_query):
-#     client = AzureClient.get_client() 
-#     deployment = AzureClient.deployment
-
-#     history = memory.get_history() 
-#     #print(f"User history -> {history}")
-#     response = client.chat.completions.create(
-#         model=deployment,
-#         messages=[
-#             {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
-#             {"role": "system", "content": f"User history -> {history}"},
-#             {"role": "user", "content": user_query},
-#         ],
-#         functions=functions,  
-#         stream=False
-#     )
-
-#     out = response.choices[0].message.function_call
-
-#     if out and hasattr(out, "name"):
-#         func_name = out.name
-#         task_func = task_map.get(func_name, lambda user_query: print("❌ Unknown function"))
-#         return task_func(user_query)
-
-#     output=response.choices[0].message.content
-#     memory.add_message(user_input=user_query,bot_response=output)
-#     return output
-
-
 import json
 
 class BaseModel:
@@ -189,58 +42,122 @@ class BaseModel:
     def to_json(self):
         return json.dumps(self.__dict__)  # ✅ Ensures valid JSON
 
-def tasksfinder(user_query,task):
-    client = AzureClient.get_client() 
+def extract_using_ai(output_json, field_name, field_aliases=None):
+    client = AzureClient.get_client()
     deployment = AzureClient.deployment
+    field_aliases = field_aliases or []
 
-    history = memory.get_history()  
+    prompt = (
+        f"You are given a JSON object from a tool output. Your task is to extract the most likely values and change the values with respect to the asked field "
+        f"for the field '{field_name}' or some thing like this. Also consider any aliases: {field_aliases}. this fileds might be statement instead of extact field names"
+        f"Return only the value as plain text, no formatting or explanation. if not able to extract just return empty\n\n"
+        f"JSON:\n{json.dumps(output_json, indent=2)}"
+    )
+
     response = client.chat.completions.create(
         model=deployment,
         messages=[
-            {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
-            {"role": "system", "content": f"User history -> {history}"},
-            {"role": "user", "content": user_query},
-            {"role": "user", "content": "sub part of the query currenlty need to be performed:-"+task},
+            {"role": "system", "content": "You are an AI that extracts values from JSON outputs."},
+            {"role": "user", "content": prompt}
         ],
-        functions=functions,  
-        stream=True  
+        stream=False
     )
+    return response.choices[0].message.content.strip()
 
-    function_call_detected = False
-    func_name = None
-    func_args = ""
+def fill_missing_parameters(tool_chain, all_outputs):
+    extraction_cache = {}  # Cache to store previously extracted values
 
-    for chunk in response:  
-        if not chunk.choices:
-            continue  
+    for step in tool_chain:
+        if "depends_on" in step and step["depends_on"]:
+            dep = step["depends_on"]
+            dep_step = dep.get("step")
+            field = dep.get("field")
+            aliases = tuple(dep.get("field_aliases", []))
 
-        delta = chunk.choices[0].delta 
+            source_output = all_outputs.get(dep_step, {})
+            cache_key = (dep_step, field, aliases)
 
-        if hasattr(delta, "function_call") and delta.function_call:
-            function_call_detected = True
-            if delta.function_call.name:
-                func_name = delta.function_call.name  
-            if delta.function_call.arguments:
-                func_args += delta.function_call.arguments  # 🚀 Accumulate function args safely
+            if cache_key in extraction_cache:
+                extracted = extraction_cache[cache_key]
+                print(f"📦 Using cached value for {cache_key}: {extracted}")
+            else:
+                print(f"\n🔍 Extracting field '{field}' (aliases: {aliases}) from step {dep_step} output")
+                extracted = extract_using_ai(source_output, field, list(aliases))
+                extraction_cache[cache_key] = extracted
 
-        if hasattr(delta, "content") and delta.content:
-            yield f"{json.dumps({'data': delta.content, 'istool': False, 'tool_out': ''})}\n"  # ✅ Ensure valid JSON
 
-    if function_call_detected and func_name:
-        print(f"\nFunction Call Detected: {func_name}")
-        print(f"Function Arguments: {func_args}")
+            if extracted:
+                print(f"✅ Extracted value: {extracted}")
+                if not step["parameters"]:
+                    step["parameters"] = {field: extracted}
+                else:
+                    for key in step["parameters"]:
+                        if step["parameters"][key] == "":
+                            step["parameters"][key] = extracted
+            else:
+                print(f"⚠️ Could not resolve dependency for step {step['step']}: field '{field}' not found.")
+                raise ValueError(f"Unresolved dependency for step {step['step']}: field '{field}'")
+    return tool_chain
 
-        try:
-            func_args = json.loads(func_args)  # ✅ Convert args to dict
-        except json.JSONDecodeError:
-            print("⚠️ Warning: Function arguments are not valid JSON.")
-            yield f"{json.dumps({'data': '⚠️ Error: Invalid function arguments', 'istool': False, 'tool_out': ''})}\n"
-            return  
+def tasksfinder(user_query):
+    client = AzureClient.get_client()
+    deployment = AzureClient.deployment
+    history = memory.get_history()
+
+    tools = extract_tool_chain(user_query)
+
+
+    if not tools:
+        print("No tools extracted.")
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=[
+                {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
+                {"role": "user", "content": user_query},
+            ],
+            functions=functions,
+            stream=True
+        )
+        for chunk in response:
+            if chunk.choices and hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta:
+                yield json.dumps({"data": chunk.choices[0].delta.content, "istool": False, "tool_out": ""}) + "\n"
+        return
+
+    all_outputs = {}
+
+    i = 0
+    while i < len(tools):
+        print("new tools:", tools)
+        tool = tools[i]
+
+        func_name = tool["tool"]
+        params = json.dumps(tool["parameters"])
+        user_query = f"{tool['command']} with parameters: {params}"
+
+        print(f"\n🚀 Executing: {func_name} -> {user_query}")
 
         task_func = task_map.get(func_name)
+        if not task_func:
+            print(f"⚠️ Error: Unknown function {func_name}")
+            yield json.dumps({'data': f'⚠️ Error: Unknown function {func_name}', 'istool': False, 'tool_out': ''}) + "\n"
+            i += 1
+            continue
 
-        if task_func:
-            for output in task_func(user_query):  
-                yield f"{output}\n"  # ✅ Always valid JSON
-        else:
-            yield f"{json.dumps({'data': f'⚠️ Error: Unknown function {func_name}', 'istool': False, 'tool_out': ''})}\n"
+        result = ""
+        for output in task_func(user_query):
+            yield output + "\n"
+            try:
+                parsed = json.loads(output)
+                if parsed.get("istool") and parsed.get("tool_out"):
+                    result = json.loads(parsed["tool_out"])
+            except Exception as e:
+                print(f"❌ Error parsing tool output: {e}")
+
+        all_outputs[tool["step"]] = result
+        i += 1
+        try:
+            tools = fill_missing_parameters(tools, all_outputs)
+        except ValueError as ve:
+            print(f"❌ Stopping execution: {ve}")
+            yield json.dumps({'data': f'❌ Execution stopped: {ve}', 'istool': False, 'tool_out': ''}) + "\n"
+            return
