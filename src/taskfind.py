@@ -31,36 +31,6 @@ task_map = {
     "sqlmap_scan":WebVulnHandler
 }
 
-#old one 
-# def tasksfinder(user_query):
-#     client = AzureClient.get_client() 
-#     deployment = AzureClient.deployment
-
-#     history = memory.get_history() 
-#     #print(f"User history -> {history}")
-#     response = client.chat.completions.create(
-#         model=deployment,
-#         messages=[
-#             {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
-#             {"role": "system", "content": f"User history -> {history}"},
-#             {"role": "user", "content": user_query},
-#         ],
-#         functions=functions,  
-#         stream=False
-#     )
-
-#     out = response.choices[0].message.function_call
-
-#     if out and hasattr(out, "name"):
-#         func_name = out.name
-#         task_func = task_map.get(func_name, lambda user_query: print("❌ Unknown function"))
-#         return task_func(user_query)
-
-#     output=response.choices[0].message.content
-#     memory.add_message(user_input=user_query,bot_response=output)
-#     return output
-
-
 import json
 
 class BaseModel:
@@ -71,10 +41,6 @@ class BaseModel:
 
     def to_json(self):
         return json.dumps(self.__dict__)  # ✅ Ensures valid JSON
-
-import json
-from Model_client import AzureClient
-from functions import functions
 
 def extract_using_ai(output_json, field_name, field_aliases=None):
     client = AzureClient.get_client()
@@ -118,7 +84,7 @@ def fill_missing_parameters(tool_chain, all_outputs):
                 print(f"\n🔍 Extracting field '{field}' (aliases: {aliases}) from step {dep_step} output")
                 extracted = extract_using_ai(source_output, field, list(aliases))
                 extraction_cache[cache_key] = extracted
-                
+
 
             if extracted:
                 print(f"✅ Extracted value: {extracted}")
@@ -139,7 +105,7 @@ def tasksfinder(user_query):
     history = memory.get_history()
 
     tools = extract_tool_chain(user_query)
-    
+
 
     if not tools:
         print("No tools extracted.")
@@ -190,9 +156,8 @@ def tasksfinder(user_query):
         all_outputs[tool["step"]] = result
         i += 1
         try:
-            tools = fill_missing_parameters(tools, all_outputs) 
+            tools = fill_missing_parameters(tools, all_outputs)
         except ValueError as ve:
             print(f"❌ Stopping execution: {ve}")
             yield json.dumps({'data': f'❌ Execution stopped: {ve}', 'istool': False, 'tool_out': ''}) + "\n"
             return
-
