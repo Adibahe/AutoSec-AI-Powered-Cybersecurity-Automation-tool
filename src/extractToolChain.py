@@ -15,26 +15,39 @@ def extract_tool_chain(user_query):
             {
                 "role": "system", 
                 "content": (
-                    "You are provided with a map of tools that you can execute in 'functions'. "
-                    "Your task is to build a structured chain of tools to process the user query.\n"
+                    "You are provided with a list of tools in 'functions' that you can use to fulfill a user's query.\n\n"
+                    "Your task is to create a logical sequence (chain) of tool invocations to fully address the user's request.\n\n"
                     "For each step:\n"
-                    "- Select the appropriate tool based on the user query choose a tool form the 'functions'.\n"
-                    "- Specify the parameters, either from the user query or from the previous tool output.\n"
-                    "- Generate a command-like instruction for this step (what is required by this steps tool), referring to parameters .\n"
-                    "- Ensure the tools are executed in a logical order.\n\n"
-                    "Return the output strictly in the following JSON format:\n\n"
+                    "- Select the appropriate tool from the available 'functions'."
+                    "- If the tool requires input parameters, extract them directly from the user query or reference a previous step using the 'depends_on' field."
+                    "- When referencing previous output:"
+                    "- Leave the 'parameters' field empty."
+                    "- Use 'depends_on' to specify:"
+                    "- The step number of the tool providing the required output."
+                    "- A field name , this should include what you want to extract from the output of the previous tool this can be like a statement or command"
+                    "- A list of possible alternative field names in 'field_aliases', which may appear in the previous tool's output."
+                    "- Use the 'command' field to briefly describe the purpose or intent of the step, similar to a shell-style instruction."
+                    "Use the following JSON structure strictly:\n\n"
                     "{\n"
-                    "    \"steps\": [\n"
-                    "        {\n"
-                    "            \"step\": <step_number>,\n"
-                    "            \"tool\": \"<tool_name>\",\n"
-                    "            \"parameters\": { <parameters_key_value_pairs> },\n"
-                    "            \"command\": \"<instruction for executing the tool>\"\n"
-                    "        },\n"
-                    "        ...\n"
-                    "    ]\n"
+                    "  \"steps\": [\n"
+                    "    {\n"
+                    "      \"step\": <step_number>,\n"
+                    "      \"tool\": \"<tool_name>\",\n"
+                    "      \"parameters\": { <key_value_pairs_if_direct_input> },\n"
+                    "      \"command\": \"<brief_instruction>\",\n"
+                    "      \"depends_on\": {\n"
+                    "        \"step\": <step_number>,\n"
+                    "        \"field\": \"<field_to_extract>\",\n"
+                    "        \"field_aliases\": [\"<alias1>\", \"<alias2>\"]\n"
+                    "      }\n"
+                    "    },\n"
+                    "    ...\n"
+                    "  ]\n"
                     "}\n\n"
-                    "Do not include any additional explanations or text outside of the JSON format."
+                    "Notes:\n"
+                    "- Only include 'depends_on' if the tool input comes from a previous step.\n"
+                    "- If 'depends_on' is used, leave the 'parameters' field empty, and if the depends_on filed doesn't contain any value leave it empty\n"
+                    "- Output only valid JSON. Do not include any explanations, comments, or markdown."
                 )
             },
             {"role": "user", "content": user_query}  
@@ -49,24 +62,33 @@ def extract_tool_chain(user_query):
 
             if hasattr(first_choice.message, "content") and first_choice.message.content:
                 content = first_choice.message.content
-                
-                # Ensure the response is valid JSON
+
                 try:
                     parsed_response = json.loads(content)
                     tool_chain = parsed_response.get("steps", [])
 
                     for step in tool_chain:
                         if "tool" in step:
+                            # Remove prefix if exists (optional)
                             step["tool"] = step["tool"].replace("functions.", "")
 
+                        # Normalize or validate dependency if present
+                        if "depends_on" in step:
+                            depends = step["depends_on"]
+                            if "step" not in depends or "field" not in depends:
+                                print(f"Warning: Incomplete dependency info in step {step['step']}")
+                            else:
+                                print(f"Step {step['step']} depends on step {depends['step']}, field '{depends['field']}'")
+
                 except json.JSONDecodeError:
-                    print("Invalid JSON format received from response.")
+                    print("❌ Invalid JSON format received from response.")
             else:
-                print("No content found in the response message.")
+                print("⚠️ No content found in the response message.")
         else:
-            print("No choices found in response.")
-    
+            print("⚠️ No choices found in response.")
+
     except Exception as e:
-        print(f"Error extracting tools: {e}")
+        print(f"🔥 Error extracting tools: {e}")
+
     
     return tool_chain
