@@ -5,9 +5,9 @@ import TypingIndicator from "./TypingIndicator";
 interface Message {
   type: "user" | "bot";
   content: string;
-  istool?: boolean;
-  tool_out?: string;
+  tool_outputs?: string[]; 
 }
+
 
 interface Props {
   messages: Message[];
@@ -25,13 +25,14 @@ const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
     }
   }, [messages]);
 
-  const toggleToolOutput = (index: number) => {
-    setExpandedTools((prev) =>
-      prev.includes(index.toString())
-        ? prev.filter((id) => id !== index.toString())
-        : [...prev, index.toString()]
-    );
-  };
+ const toggleToolOutput = (id: string) => {
+  setExpandedTools((prev) =>
+    prev.includes(id)
+      ? prev.filter((existingId) => existingId !== id)
+      : [...prev, id]
+  );
+};
+
 
   return (
     <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -52,27 +53,28 @@ const ChatArea: React.FC<Props> = ({ messages, isTyping = false }) => {
             </p>
 
             {/* Tool Output Section */}
-            {message.istool && message.tool_out && (
-              <div className="mt-3 max-w-full">
-                <button
-                  onClick={() => toggleToolOutput(index)}
-                  className="flex items-center gap-2 text-sm text-blue-400 hover:text-white transition-colors"
-                >
-                  <Terminal className="w-4 h-4" />
-                  <span>Tool Output</span>
-                  {expandedTools.includes(index.toString()) ? (
-                    <ChevronUp className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
-                </button>
-                {expandedTools.includes(index.toString()) && (
-                  <pre className="mt-2 p-4 bg-gray-800 text-gray-200 font-mono text-sm rounded-lg border border-gray-600 overflow-x-auto overflow-y-auto max-h-[400px] max-w-full">
-                    {message.tool_out}
-                  </pre>
-                )}
-              </div>
-            )}
+            {message.tool_outputs && message.tool_outputs.map((toolOut, i) => (
+  <div key={i} className="mt-3 max-w-full">
+    <button
+      onClick={() => toggleToolOutput(`${index}-${i}`)}
+      className="flex items-center gap-2 text-sm text-blue-400 hover:text-white transition-colors"
+    >
+      <Terminal className="w-4 h-4" />
+      <span>Tool Output #{i + 1}</span>
+      {expandedTools.includes(`${index}-${i}`) ? (
+        <ChevronUp className="w-4 h-4" />
+      ) : (
+        <ChevronDown className="w-4 h-4" />
+      )}
+    </button>
+    {expandedTools.includes(`${index}-${i}`) && (
+      <pre className="mt-2 p-4 bg-gray-800 text-gray-200 font-mono text-sm rounded-lg border border-gray-600 overflow-x-auto overflow-y-auto max-h-[400px] max-w-full">
+        {toolOut}
+      </pre>
+    )}
+  </div>
+))}
+
           </div>
         </div>
       ))}

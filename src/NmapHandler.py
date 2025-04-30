@@ -12,7 +12,7 @@ class BaseModel:
         self.tool_out = tool_out
 
     def to_json(self):
-        return json.dumps(self.__dict__)  # ✅ Ensures valid JSON
+        return json.dumps(self.__dict__)  
 
 def scanner(user_query):
    

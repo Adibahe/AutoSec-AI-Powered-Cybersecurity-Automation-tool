@@ -89,16 +89,23 @@ function Chat() {
               accumulatedMessage += parsed.data;
 
               setMessages(prev =>
-                prev.map((msg, index) =>
-                  index === prev.length - 1 && msg.type === "bot"
-                    ? {
-                        ...msg,
-                        content: accumulatedMessage,
-                        ...(parsed.istool ? { istool: true, tool_out: parsed.tool_out } : {}),
-                      }
-                    : msg
-                )
+                prev.map((msg, index) => {
+                  if (index === prev.length - 1 && msg.type === "bot") {
+                    const updatedContent = { ...msg, content: accumulatedMessage };
+                    
+                    if (parsed.istool && parsed.tool_out) {
+                      const existingTools = msg.tool_out || [];
+                      return {
+                        ...updatedContent,
+                        tool_outputs: [...existingTools, parsed.tool_out]
+                      };
+                    }
+                    return updatedContent;
+                  }
+                  return msg;
+                })
               );
+              
 
               partialChunk = "";
             } catch (error) {
