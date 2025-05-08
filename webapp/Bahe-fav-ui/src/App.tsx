@@ -14,6 +14,7 @@ type Message =
       content: string;
       istool?: boolean;
       tool_out?: string;
+      tool_outputs?: string[]; 
     };
 
 type Task = {
@@ -88,23 +89,27 @@ function Chat() {
               const parsed: BaseModel = JSON.parse(json);
               accumulatedMessage += parsed.data;
 
-              setMessages(prev =>
-                prev.map((msg, index) => {
+              setMessages(prev => {
+                return prev.map((msg, index) => {
                   if (index === prev.length - 1 && msg.type === "bot") {
                     const updatedContent = { ...msg, content: accumulatedMessage };
-                    
+              
                     if (parsed.istool && parsed.tool_out) {
-                      const existingTools = msg.tool_out || [];
+                      const newToolOutputs = [...(msg.tool_outputs ?? []), parsed.tool_out];
                       return {
                         ...updatedContent,
-                        tool_outputs: [...existingTools, parsed.tool_out]
+                        tool_outputs: newToolOutputs,
                       };
                     }
+              
                     return updatedContent;
                   }
+              
                   return msg;
-                })
-              );
+                });
+              });
+              
+              
               
 
               partialChunk = "";
