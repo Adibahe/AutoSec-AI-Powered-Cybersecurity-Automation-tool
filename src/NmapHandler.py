@@ -16,7 +16,7 @@ class BaseModel:
 
 def scanner(user_query):
    
-    yield f"{json.dumps({'data': "Scanning task...", 'istool': False, 'tool_out': ''})}\n" 
+    yield f"{json.dumps({'data': "Scanning task...\n", 'istool': False, 'tool_out': ''})}\n" 
     print("Scanning task ....")
 
     client = AzureClient.get_client()
@@ -70,7 +70,7 @@ def scanner(user_query):
         response = client.chat.completions.create(
             model=deployment,
             messages=[
-                {"role": "system", "content": "You are a cyber bot that is capable of various tasks."},
+                {"role": "system", "content": "You are a cyber bot that is capable of various tasks.your genereal task is to explain nmap scan to the user,ensure proper line breaks to show clear output"},
                 {"role": "system", "content": f"User history -> {history}"},
                 {"role": "system", "content": f"An Nmap command was run -> {command}\nThe output of the user's query is:\n{scan_results_str}"}
             ],

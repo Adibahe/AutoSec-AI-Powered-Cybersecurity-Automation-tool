@@ -46,7 +46,7 @@ functions = [
     },
     {
         "name": "exploitation",
-        "description": "Executes exploits against a target using tools like Metasploit or manual scripts.,if user asked to run tools like :- metasploit,searchsploit",
+        "description": "Executes exploits against a target using tools like Metasploit or manual scripts.,if user asked to run tools like :- metasploit,searchsploit,hydra",
         "parameters": {"type": "object", "properties": {}}
     },
     {

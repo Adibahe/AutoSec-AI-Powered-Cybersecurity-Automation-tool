@@ -24,7 +24,6 @@ def safe_parse_steps(response_text):
     except Exception:
         pass
     raise ValueError("LLM response is not a valid list of strings")
-
 def Chain(user_query):
     client = AzureClient.get_client() 
     deployment = AzureClient.deployment
@@ -56,10 +55,16 @@ Remember: return only a Python list. Nothing else.
     
     print("LLM Steps:", steps)
 
+    # ✅ Initialize temp here
+    temp = user_query + "\nbot response:\n"
+
     for out in steps:
         for ele in tasksfinder(user_query, out):
             try:
-                ele_dict = json.loads(ele)  
-                print(ele_dict["data"])
+                ele_dict = json.loads(ele)
+                print(ele_dict["data"])  
+                temp += ele_dict["data"] + "\n"  
             except Exception as e:
                 print("Error parsing ele:", e)
+
+    print("Final bot response:", temp)
