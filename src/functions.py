@@ -21,7 +21,7 @@ functions = [
     },
     {
         "name": "web_vulnerability_scan",
-        "description": "Scans a website for common vulnerabilities like XSS, SQL injection, etc.",
+        "description": "Scans a website for common vulnerabilities like XSS, SQL injection,fuzzing using fuff, etc.",
         "parameters": {"type": "object", "properties": {}}
     },
     {

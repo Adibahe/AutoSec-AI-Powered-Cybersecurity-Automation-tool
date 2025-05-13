@@ -3,6 +3,9 @@ import json
 from Model_client import AzureClient
 from Memory import MemorySingleton
 
+import json  
+import subprocess
+
 
 memory = MemorySingleton()
 class BaseModel:
@@ -35,7 +38,7 @@ def scanner(user_query):
     out = response.choices[0].message.function_call
 
     if out is not None:
-        print("Running Nmap scan...")
+        
         params = out.arguments
         name = out.name
 
@@ -46,84 +49,125 @@ def scanner(user_query):
             yield f"{json.dumps({'data': "Error: Invalid function arguments", 'istool': False, 'tool_out': ''})}\n" 
             return  
 
-        ip = params_dict.get("ip", "")
-        arguments = params_dict.get("arguments", [])
-        args_str = " ".join(arguments)
-        command = f"{ip} {args_str}"
+        command = params_dict['command']
 
-        function_map = {"scan": scan}
-
-        if name in function_map:
+        if name=="scan":
            
-            yield f"{json.dumps({'data': f"Running scan on {ip} with arguments: {args_str}", 'istool': False, 'tool_out': ''})}\n" 
+            yield f"{json.dumps({'data': f"Running nmap scan command:-{command}", 'istool': False, 'tool_out': ''})}\n" 
 
             # Run scan
-            scan_results = function_map[name](ip, arguments)
-            scan_results_str = json.dumps(scan_results, indent=2)
+            scan_results = scan(command)
             
-            yield json.dumps({"data": "Scan completed.", "istool": True, "tool_out": scan_results_str}) + "\n"
-        else:
-            yield json.dumps({"data": f"⚠️ Error: Unknown function name: {name}", "istool": False, "tool_out": ""}) + "\n"
-            return
+            yield json.dumps({"data": "Scan completed.", "istool": True, "tool_out": scan_results}) + "\n"
 
-        history = memory.get_history()
-        response = client.chat.completions.create(
+            response = client.chat.completions.create(
             model=deployment,
             messages=[
                 {"role": "system", "content": "You are a cyber bot that is capable of various tasks.your genereal task is to explain nmap scan to the user,ensure proper line breaks to show clear output"},
-                {"role": "system", "content": f"User history -> {history}"},
-                {"role": "system", "content": f"An Nmap command was run -> {command}\nThe output of the user's query is:\n{scan_results_str}"}
+                {"role": "system", "content": f"An Nmap command was run -> {command}\nThe output of the user's query is:\n{scan_results}"}
             ],
             stream=True
-        )
+            )
 
-        for chunk in response:
-            if chunk.choices and hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta:
-                yield json.dumps({"data": chunk.choices[0].delta.content, "istool": False, "tool_out": ""}) + "\n"
+            for chunk in response:
+                if chunk.choices and hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta:
+                    yield json.dumps({"data": chunk.choices[0].delta.content, "istool": False, "tool_out": ""}) + "\n"
 
-def scan(ip, arguments):
-    nm = nmap.PortScanner()
-    args_str = " ".join(arguments)
-    nm.scan(ip, arguments=args_str)
-    print(f"Running command: {ip} {args_str}")
+        elif name=="masscan":
+            yield f"{json.dumps({'data': f"Running masscan scan command:-{command}", 'istool': False, 'tool_out': ''})}\n" 
 
-    result = {}
-    for host in nm.all_hosts():
-        result[host] = {
-            "hostname": nm[host].hostname(),
-            "state": nm[host].state(),
-            "protocols": {}
-        }
+            # Run scan
+            scan_results = masscan(command)
+            
+            yield json.dumps({"data": "Scan completed.", "istool": True, "tool_out": scan_results}) + "\n"
 
-        for proto in nm[host].all_protocols():
-            result[host]["protocols"][proto] = {}
-            ports = nm[host][proto].keys()
-            for port in sorted(ports):
-                result[host]["protocols"][proto][port] = nm[host][proto][port]["state"]
+            response = client.chat.completions.create(
+            model=deployment,
+            messages=[
+                {"role": "system", "content": "You are a cyber bot that is capable of various tasks.your genereal task is to explain masscan scan to the user,ensure proper line breaks to show clear output"},
+                {"role": "system", "content": f"An masscan command was run -> {command}\nThe output of the user's query is:\n{scan_results}"}
+            ],
+            stream=True
+            )
 
-    return result
+            for chunk in response:
+                if chunk.choices and hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta:
+                    yield json.dumps({"data": chunk.choices[0].delta.content, "istool": False, "tool_out": ""}) + "\n"
+
+
+def scan(command):
+    print(f"🔍 Running nmapscan  : {command}")
+
+    command_list = command.split(" ")
+
+    result = subprocess.run(command_list, capture_output=True, text=True)
+
+    output = ""
+    if result.stdout:
+        output += result.stdout
+    if result.stderr:
+        output += f"\n❌ Errors: {result.stderr}"
+    
+    return output  
 
 functions = [
-    {
-        "name": "scan",
-        "description": "Performs a network scan on a given IP address using Nmap.",
+   {
+  "name": "scan",
+  "description": "Performs a network scan on a given IP address using Nmap",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "string",
+        "description": "Provide an Nmap command here (format: nmap [options] target). Common flags:\n\n\
+-sS (TCP SYN), -sT (TCP connect), -sU (UDP), -sA (ACK), -sN (Null), -sF (FIN), -sX (Xmas),\n\
+-sP/-sn (Ping scan), -sV (Service/version detection), -O (OS detection), -A (Aggressive: -O -sV -sC -traceroute),\n\
+-p (Specify ports), -F (Fast scan), -r (Don't randomize ports), -T0-T5 (Timing: paranoid to insane),\n\
+--open (Show only open), --top-ports (Top N ports), --exclude (Exclude hosts),\n\
+-iL (Input list), -oN/-oX/-oG/-oA (Output formats), -Pn (Skip host discovery), -n (No DNS resolution),\n\
+--script (NSE script), -sC (Default scripts), --traceroute, -v/-vv (Verbose), -d (Debug), --reason (Show reasons)"
+      }
+    },
+    "required": ["command"]
+  }
+}
+
+    , {
+        "name": "masscan",
+        "description": "runs masscan tool,run it when user want extremly fast portscanning or user explcilty asked for this tool or user only want port scanning ",
         "parameters": {
             "type": "object",
             "properties": {
-                "ip": {
+                "command": {
                     "type": "string",
-                    "description": "The target IP address to scan (e.g., '192.168.1.1')."
-                },
-                "arguments": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": """List of Nmap arguments to customize the scan. 
-
-Example: `["-p 22,80,443", "-sV"]` 
+                    "description": """ usage:
+masscan -p80,8000-8100 10.0.0.0/8 --rate=10000
+ scan some web ports on 10.x.x.x at 10kpps
+masscan --nmap
+ list those options that are compatible with nmap
+masscan -p80 10.0.0.0/8 --banners -oB <filename>
+ save results of scan in binary format to <filename>
+masscan --open --banners --readscan <filename> -oX <savefile>
+ read binary scan results in <filename> and save them as xml in <savefile>
 """
                 }
             },
-            "required": ["ip"]
+            "required": ["command"]
         }
     }
 ]
+
+def masscan(command):
+    print(f"🔍 Running masscan : {command}")
+
+    command_list = command.split(" ")
+
+    result = subprocess.run(command_list, capture_output=True, text=True)
+
+    output = ""
+    if result.stdout:
+        output += result.stdout
+    if result.stderr:
+        output += f"\n❌ Errors: {result.stderr}"
+    
+    return output  

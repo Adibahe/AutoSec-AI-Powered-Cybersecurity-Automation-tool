@@ -160,4 +160,4 @@ def tasksfinder(user_query):
         except ValueError as ve:
             print(f"❌ Stopping execution: {ve}")
             yield json.dumps({'data': f'❌ Execution stopped: {ve}', 'istool': False, 'tool_out': ''}) + "\n"
-            return
+        
